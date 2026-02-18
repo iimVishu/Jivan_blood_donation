@@ -26,9 +26,10 @@ export async function GET(req: Request) {
       };
     }
 
-    const bloodBanks = await BloodBank.find(query);
+    const bloodBanks = await BloodBank.find(query).sort({ name: 1 });
     return NextResponse.json(bloodBanks);
   } catch (error) {
+    console.error("Error fetching blood banks:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

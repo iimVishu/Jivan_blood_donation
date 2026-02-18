@@ -43,7 +43,7 @@ export async function POST(req: Request) {
       If the user is just chatting, respond normally.
     `;
 
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
 
     const chat = model.startChat({
       history: [
@@ -91,10 +91,25 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ response: text });
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating response:", error);
+    
+    // Handle specific API quota errors
+    if (error?.status === 429 || error?.message?.includes('quota')) {
+      return NextResponse.json(
+        { 
+          error: "The AI service is currently at capacity. Please try again in a few moments.",
+          response: "I'm experiencing high demand right now. Please try again in a minute or two. 🙏" 
+        },
+        { status: 429 }
+      );
+    }
+    
     return NextResponse.json(
-      { error: "Failed to generate response" },
+      { 
+        error: "Failed to generate response",
+        response: "I'm having trouble connecting right now. Please try again later." 
+      },
       { status: 500 }
     );
   }

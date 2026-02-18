@@ -18,6 +18,8 @@ export default function DonatePage() {
   const router = useRouter();
   const [step, setStep] = useState(1);
   const [bloodBanks, setBloodBanks] = useState<BloodBank[]>([]);
+  const [banksLoading, setBanksLoading] = useState(true);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
     date: "",
@@ -39,10 +41,13 @@ export default function DonatePage() {
           if (Array.isArray(data) && data.length === 0) {
             console.log("No blood banks found, attempting to seed...");
             try {
-              await fetch("/api/seed");
-              const res2 = await fetch("/api/bloodbanks");
-              if (res2.ok) {
-                data = await res2.json();
+              const seedRes = await fetch("/api/seed");
+              if (seedRes.ok) {
+                 // Fetch again after seeding
+                 const res2 = await fetch("/api/bloodbanks");
+                 if (res2.ok) {
+                   data = await res2.json();
+                 }
               }
             } catch (seedError) {
               console.error("Auto-seed failed", seedError);
@@ -50,9 +55,15 @@ export default function DonatePage() {
           }
           
           setBloodBanks(data);
+        } else {
+            console.error("Failed to fetch blood banks: Status", res.status);
+            setFetchError(`Failed to load blood banks (Status: ${res.status})`);
         }
       } catch (error) {
         console.error("Failed to fetch blood banks", error);
+        setFetchError("Unable to load blood banks. Connection failed.");
+      } finally {
+        setBanksLoading(false);
       }
     };
     fetchBloodBanks();
@@ -187,12 +198,32 @@ export default function DonatePage() {
                       value={formData.bloodBank}
                     >
                       <option value="">Select a location</option>
-                      {bloodBanks.map((bank) => (
-                        <option key={bank._id} value={bank._id}>
-                          {bank.name} - {bank.address?.city}, {bank.address?.state}
-                        </option>
-                      ))}
+                      {fetchError ? (
+                        <option disabled>Error loading locations</option>
+                      ) : banksLoading ? (
+                        <option disabled>Loading locations...</option>
+                      ) : bloodBanks.length === 0 ? (
+                        <option disabled>No donation centers available</option>
+                      ) : (
+                        bloodBanks.map((bank) => (
+                          <option key={bank._id} value={bank._id}>
+                            {bank.name} {bank.address?.city ? `- ${bank.address.city}` : ''}
+                          </option>
+                        ))
+                      )}
                     </select>
+                    {banksLoading && <p className="mt-1 text-xs text-blue-500">Fetching nearby centers...</p>}
+                    {fetchError && (
+                        <p className="mt-1 text-xs text-red-600 font-medium">
+                            {fetchError}. <button type="button" onClick={() => window.location.reload()} className="underline ml-1">Reload Page</button>
+                        </p>
+                    )}
+                    {!banksLoading && bloodBanks.length === 0 && (
+                      <p className="mt-1 text-xs text-red-500">
+                        No blood banks found. Please try refreshing or contact support. 
+                        <button type="button" onClick={() => window.location.reload()} className="ml-1 underline">Refresh</button>
+                      </p>
+                    )}
                   </div>
                 </div>
 

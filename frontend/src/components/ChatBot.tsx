@@ -65,7 +65,9 @@ export default function ChatBot() {
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Failed to get response");
+        // Use the server's response message if available
+        const errorMessage = data.response || data.error || "Failed to get response";
+        throw new Error(errorMessage);
       }
 
       const botResponse: Message = { 
@@ -74,11 +76,11 @@ export default function ChatBot() {
         sender: "bot" 
       };
       setMessages((prev) => [...prev, botResponse]);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Chat error:", error);
       const errorResponse: Message = { 
         id: Date.now() + 1, 
-        text: "Sorry, I'm having trouble connecting right now. Please try again later.", 
+        text: error.message || "Sorry, I'm having trouble connecting right now. Please try again later.", 
         sender: "bot" 
       };
       setMessages((prev) => [...prev, errorResponse]);
