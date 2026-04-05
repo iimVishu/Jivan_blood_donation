@@ -2,10 +2,54 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { Users, Droplet, Activity, AlertCircle, Plus, MapPin, Calendar, Check, X, Trash2, AlertTriangle, Siren, Megaphone, MessageSquare, Star } from "lucide-react";
+import { Users, Droplet, Activity, AlertCircle, Plus, MapPin, Calendar, Check, X, Trash2, AlertTriangle, Siren, Megaphone, MessageSquare, Star, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import EmergencyAlertsList from "@/components/EmergencyAlertsList";
 import { motion, AnimatePresence } from "framer-motion";
+
+const exportToCSV = (data: any[], filename: string) => {
+  if (!data || data.length === 0) {
+    alert("No data to export");
+    return;
+  }
+
+  // Extract headers
+  const sample = data[0];
+  const headers = Object.keys(sample).filter(key => 
+    typeof sample[key] !== 'object' || sample[key] === null
+  );
+
+  const csvRows = [
+    headers.join(","),
+    ...data.map(row => 
+      headers.map(header => {
+        let val = row[header];
+        if (val === null || val === undefined) val = "";
+        
+        // Format dates correctly for Excel
+        if (typeof val === 'string' && (header.toLowerCase().includes('date') || header === 'createdAt' || header === 'updatedAt')) {
+          const date = new Date(val);
+          if (!isNaN(date.getTime())) {
+            val = date.toLocaleString(); 
+          }
+        }
+
+        // Wrap in quotes to handle commas
+        return `"${String(val).replace(/"/g, '""')}"`;
+      }).join(",")
+    )
+  ];
+
+  const blob = new Blob([csvRows.join("\n")], { type: "text/csv" });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.setAttribute("hidden", "");
+  a.setAttribute("href", url);
+  a.setAttribute("download", `${filename}.csv`);
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+};
 
 export default function AdminDashboard() {
   const { data: session, status } = useSession();
@@ -19,6 +63,24 @@ export default function AdminDashboard() {
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [appointmentTab, setAppointmentTab] = useState<'pending' | 'upcoming' | 'completed'>('pending');
+  const [requestTab, setRequestTab] = useState<'pending' | 'approved' | 'fulfilled' | 'rejected'>('pending');
+  const [volunteerTab, setVolunteerTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+
+  const filteredAppointments = appointments.filter((apt) => {
+    if (appointmentTab === 'pending') return apt.status === 'pending';
+    if (appointmentTab === 'upcoming') return apt.status === 'confirmed';
+    if (appointmentTab === 'completed') return apt.status === 'completed';
+    return false;
+  }).sort((a, b) => {
+    if (appointmentTab === 'completed') {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
+
+  const filteredRequests = requests.filter(r => r.status === requestTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
+  const filteredVolunteers = volunteers.filter(v => v.status === volunteerTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
 
   // Disaster Mode State
   const [showDisasterModal, setShowDisasterModal] = useState(false);
@@ -579,8 +641,32 @@ export default function AdminDashboard() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900">All Appointments</h2>
+              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-900 px-2">Donation Appointments</h2>
+                  <button 
+                    onClick={() => exportToCSV(appointments, 'appointments')}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export</span>
+                  </button>
+                </div>
+                <div className="flex space-x-2 bg-gray-50 p-1 rounded-lg">
+                  {(['pending', 'upcoming', 'completed'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setAppointmentTab(tab)}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                        appointmentTab === tab
+                          ? 'bg-white text-gray-900 shadow border-gray-200'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -595,7 +681,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {appointments.map((apt) => (
+                    {filteredAppointments.map((apt) => (
                       <tr key={apt._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {apt.donor?.name || "Unknown"}
@@ -641,6 +727,13 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
+                    {filteredAppointments.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          No {appointmentTab} appointments found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -656,8 +749,32 @@ export default function AdminDashboard() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900">Blood Requests</h2>
+              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-900 px-2">Blood Requests</h2>
+                  <button 
+                    onClick={() => exportToCSV(requests, 'blood_requests')}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export</span>
+                  </button>
+                </div>
+                <div className="flex space-x-2 bg-gray-50 p-1 rounded-lg">
+                  {(['pending', 'approved', 'fulfilled', 'rejected'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setRequestTab(tab)}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize ${
+                        requestTab === tab
+                          ? 'bg-white text-gray-900 shadow border-gray-200'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -672,7 +789,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {requests.map((req) => (
+                    {filteredRequests.map((req) => (
                       <tr key={req._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{req.patientName}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{req.bloodGroup}</td>
@@ -700,6 +817,13 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
+                    {filteredRequests.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          No {requestTab} requests found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -715,8 +839,15 @@ export default function AdminDashboard() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100">
+              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
                 <h2 className="text-lg font-semibold text-gray-900">Registered Users</h2>
+                <button 
+                  onClick={() => exportToCSV(users, 'users')}
+                  className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                >
+                  <Download className="h-4 w-4" />
+                  <span>Export</span>
+                </button>
               </div>
               
               <AnimatePresence>
@@ -846,8 +977,32 @@ export default function AdminDashboard() {
               transition={{ duration: 0.3 }}
               className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
             >
-              <div className="p-6 border-b border-gray-100">
-                <h2 className="text-lg font-semibold text-gray-900">Volunteer Applications</h2>
+              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-900 px-2">Volunteer Applications</h2>
+                  <button 
+                    onClick={() => exportToCSV(volunteers, 'volunteers')}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export</span>
+                  </button>
+                </div>
+                <div className="flex space-x-2 bg-gray-50 p-1 rounded-lg">
+                  {(['pending', 'approved', 'rejected'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setVolunteerTab(tab)}
+                      className={`px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize ${
+                        volunteerTab === tab
+                          ? 'bg-white text-gray-900 shadow border-gray-200'
+                          : 'text-gray-500 hover:text-gray-700'
+                      }`}
+                    >
+                      {tab}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div className="overflow-x-auto">
                 <table className="min-w-full divide-y divide-gray-200">
@@ -861,7 +1016,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {volunteers.map((vol) => (
+                    {filteredVolunteers.map((vol) => (
                       <tr key={vol._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {vol.name}
@@ -895,9 +1050,11 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
-                    {volunteers.length === 0 && (
+                    {filteredVolunteers.length === 0 && (
                       <tr>
-                        <td colSpan={5} className="px-6 py-4 text-center text-gray-500">No applications found</td>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                          No {volunteerTab} applications found.
+                        </td>
                       </tr>
                     )}
                   </tbody>

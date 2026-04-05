@@ -198,8 +198,8 @@ export default function DonorDashboard() {
             <h1 className="text-3xl font-bold text-gray-900">Welcome back, {session?.user?.name}</h1>
             <p className="text-gray-600">Here's your donation overview</p>
           </div>
-          <div className="flex space-x-3">
-            <div className="bg-white rounded-lg p-1 flex border border-gray-200">
+          <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto overflow-hidden">
+            <div className="bg-white rounded-lg p-1 flex border border-gray-200 overflow-x-auto whitespace-nowrap">
               {['overview', 'health', 'card', 'badges', 'reminders'].map((tab) => (
                 <button
                   key={tab}
@@ -215,7 +215,7 @@ export default function DonorDashboard() {
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
                   )}
-                  <span className="relative z-10 capitalize">
+                  <span className="relative z-10 capitalize whitespace-nowrap truncate">
                     {tab === 'card' ? 'Digital ID' : tab === 'health' ? 'Health Card' : tab === 'badges' ? 'Badges' : tab === 'reminders' ? 'Reminders' : tab}
                   </span>
                 </button>

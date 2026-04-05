@@ -149,7 +149,7 @@ export default function CampsPage() {
                     value={formData.phone}
                     onChange={handleChange}
                     className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-red-500 outline-none transition-all"
-                    placeholder="+91 98765 43210"
+                    placeholder="+91 7654470914"
                   />
                 </div>
               </div>

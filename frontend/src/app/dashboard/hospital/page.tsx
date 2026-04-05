@@ -12,6 +12,7 @@ export default function HospitalDashboard() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [inventory, setInventory] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState<'pending' | 'upcoming' | 'completed'>('pending');
   
   // Multi-bank support
   const [linkedBanks, setLinkedBanks] = useState<any[]>([]);
@@ -234,6 +235,18 @@ export default function HospitalDashboard() {
   const pendingAppointments = appointments.filter(a => a.status === 'pending');
   const confirmedAppointments = appointments.filter(a => a.status === 'confirmed');
   const totalStock = (inventory ? Object.values(inventory).reduce((a: number, b: any) => a + (Number(b) || 0), 0) : 0) as number;
+
+  const filteredAppointments = appointments.filter((apt) => {
+    if (activeTab === 'pending') return apt.status === 'pending';
+    if (activeTab === 'upcoming') return apt.status === 'confirmed';
+    if (activeTab === 'completed') return apt.status === 'completed';
+    return false;
+  }).sort((a, b) => {
+    if (activeTab === 'completed') {
+      return new Date(b.date).getTime() - new Date(a.date).getTime();
+    }
+    return new Date(a.date).getTime() - new Date(b.date).getTime();
+  });
 
   if (loading) return <div className="p-8 text-center">Loading dashboard...</div>;
 
@@ -527,8 +540,23 @@ export default function HospitalDashboard() {
           transition={{ delay: 0.6 }}
           className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden mb-8"
         >
-          <div className="p-6 border-b border-gray-100">
-            <h2 className="text-lg font-semibold text-gray-900">Donation Appointments</h2>
+          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+            <h2 className="text-lg font-semibold text-gray-900 px-2">Donation Appointments</h2>
+            <div className="flex space-x-2 bg-gray-50 p-1 rounded-lg">
+              {(['pending', 'upcoming', 'completed'] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
+                    activeTab === tab
+                      ? 'bg-white text-gray-900 shadow border-gray-200'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  {tab.charAt(0).toUpperCase() + tab.slice(1)}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="overflow-x-auto">
             <table className="min-w-full divide-y divide-gray-200">
@@ -543,7 +571,7 @@ export default function HospitalDashboard() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {appointments.map((apt) => (
+                {filteredAppointments.map((apt) => (
                   <tr key={apt._id}>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{apt.donor?.name}</td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{apt.donor?.bloodGroup}</td>
@@ -598,9 +626,11 @@ export default function HospitalDashboard() {
                     </td>
                   </tr>
                 ))}
-                {appointments.length === 0 && (
+                {filteredAppointments.length === 0 && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-4 text-center text-gray-500">No appointments found</td>
+                    <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                      No {activeTab} appointments found.
+                    </td>
                   </tr>
                 )}
               </tbody>
