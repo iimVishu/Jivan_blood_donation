@@ -31,10 +31,20 @@ export async function GET(req: Request) {
 
     const appointments = await Appointment.find(query)
       .populate("bloodBank", "name address")
-      .populate("donor", "name bloodGroup phone")
+      .populate("donor", "name bloodGroup phone isAnonymous")
       .sort({ date: 1 });
 
-    return NextResponse.json(appointments);
+    // Anonymize donor details for privacy compliance if requested by donor
+    const processedAppointments = appointments.map((apt) => {
+      const aptObj = apt.toObject();
+      if ((session.user.role === 'hospital' || session.user.role === 'admin') && aptObj.donor?.isAnonymous) {
+        aptObj.donor.name = "Anonymous Donor";
+        aptObj.donor.phone = "***-***-****";
+      }
+      return aptObj;
+    });
+
+    return NextResponse.json(processedAppointments);
   } catch (error) {
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }

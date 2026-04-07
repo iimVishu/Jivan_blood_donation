@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Request from "@/models/Request";
+import AuditLog from "@/models/AuditLog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 
@@ -31,6 +32,11 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const body = await req.json();
     const { id } = await params;
 
+    const existingReq = await Request.findById(id);
+    if (!existingReq) {
+      return NextResponse.json({ message: "Request not found" }, { status: 404 });
+    }
+
     // Role-based access control for request status changes
     const statusChanges = ['approved', 'rejected', 'fulfilled'];
     if (body.status && statusChanges.includes(body.status)) {
@@ -42,6 +48,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
         );
       }
     }
+
+    const previousState = { status: existingReq.status };
     
     const updatedRequest = await Request.findByIdAndUpdate(
       id,
@@ -49,12 +57,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
       { new: true }
     );
 
-    if (!updatedRequest) {
-      return NextResponse.json({ message: "Request not found" }, { status: 404 });
+    // Create Audit Log if status changed
+    if (body.status && body.status !== previousState.status) {
+      const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown';
+      const userAgent = req.headers.get('user-agent') || 'unknown';
+      await AuditLog.create({
+        action: 'STATUS_CHANGED',
+        entityType: 'Request',
+        entityId: updatedRequest._id,
+        performedBy: session.user.id,
+        performedByRole: session.user.role,
+        previousState,
+        newState: { status: updatedRequest.status },
+        ipAddress: ip,
+        userAgent
+      });
     }
 
     return NextResponse.json(updatedRequest);
   } catch (error) {
+    console.error("PUT Request error:", error);
     return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
   }
 }

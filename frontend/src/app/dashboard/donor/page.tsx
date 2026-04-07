@@ -42,7 +42,7 @@ export default function DonorDashboard() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [certificateDate, setCertificateDate] = useState("");
   const [appointments, setAppointments] = useState<Appointment[]>([]);
-  const [activeTab, setActiveTab] = useState<'overview' | 'health' | 'card' | 'badges' | 'reminders'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'health' | 'card' | 'badges' | 'reminders' | 'settings'>('overview');
   const [insights, setInsights] = useState<Record<string, string>>({});
   const [loadingInsight, setLoadingInsight] = useState<string | null>(null);
   const [profile, setProfile] = useState<any>(null);
@@ -200,7 +200,7 @@ export default function DonorDashboard() {
           </div>
           <div className="flex flex-col lg:flex-row gap-3 w-full lg:w-auto overflow-hidden">
             <div className="bg-white rounded-lg p-1 flex border border-gray-200 overflow-x-auto whitespace-nowrap">
-              {['overview', 'health', 'card', 'badges', 'reminders'].map((tab) => (
+              {['overview', 'health', 'card', 'badges', 'reminders', 'settings'].map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab as any)}
@@ -216,7 +216,7 @@ export default function DonorDashboard() {
                     />
                   )}
                   <span className="relative z-10 capitalize whitespace-nowrap truncate">
-                    {tab === 'card' ? 'Digital ID' : tab === 'health' ? 'Health Card' : tab === 'badges' ? 'Badges' : tab === 'reminders' ? 'Reminders' : tab}
+                    {tab === 'card' ? 'Digital ID' : tab === 'health' ? 'Health Card' : tab === 'badges' ? 'Badges' : tab === 'reminders' ? 'Reminders' : tab === 'settings' ? 'Privacy Settings' : tab}
                   </span>
                 </button>
               ))}
@@ -566,6 +566,57 @@ export default function DonorDashboard() {
               transition={{ duration: 0.3 }}
             >
               <DonationReminders />
+            </motion.div>
+          ) : activeTab === 'settings' ? (
+            <motion.div
+              key="settings"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-6 border-b border-gray-100">
+                <h2 className="text-xl font-semibold text-gray-900">Privacy & Settings</h2>
+                <p className="text-gray-500 mt-1">Manage your data compliance and anonymity settings.</p>
+              </div>
+              <div className="p-6">
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 mb-6">
+                  <div>
+                    <h3 className="font-medium text-gray-900 flex items-center">
+                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-2 font-bold uppercase tracking-wide">HIPAA Mode</span>
+                      Anonymous Donation
+                    </h3>
+                    <p className="text-sm text-gray-500 mt-1 max-w-xl">
+                      When enabled, hospitals and blood banks will only see you as an "Anonymous Donor". Your real name and phone number will be hidden from their records.
+                    </p>
+                  </div>
+                  <div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={profile?.isAnonymous || false}
+                        onChange={async (e) => {
+                          const checked = e.target.checked;
+                          setProfile({...profile, isAnonymous: checked});
+                          try {
+                            await fetch("/api/profile", {
+                              method: "PUT",
+                              headers: {"Content-Type": "application/json"},
+                              body: JSON.stringify({ isAnonymous: checked })
+                            });
+                          } catch(err) {
+                            console.error(err);
+                            setProfile({...profile, isAnonymous: !checked});
+                          }
+                        }}
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-red-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-red-600"></div>
+                    </label>
+                  </div>
+                </div>
+              </div>
             </motion.div>
           ) : null}
         </AnimatePresence>

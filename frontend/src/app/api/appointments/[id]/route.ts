@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Appointment from "@/models/Appointment";
+import AuditLog from "@/models/AuditLog";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { sendAppointmentConfirmationEmail, sendAppointmentRejectionEmail, sendBloodDonationAppreciationEmail } from "@/lib/email";
@@ -31,6 +32,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
        return NextResponse.json({ message: "Forbidden" }, { status: 403 });
     }
 
+    // Capture previous state for Audit Log
+    const previousState = { status: appointment.status, trackingStatus: appointment.trackingStatus };
+
     // If completing the appointment, update inventory and donor stats
     if (status === 'completed' && appointment.status !== 'completed') {
       const User = (await import("@/models/User")).default;
@@ -58,11 +62,26 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     const updatedAppointment = await Appointment.findByIdAndUpdate(
       id,
-      updateData,
+      { $set: updateData },
       { new: true }
     )
     .populate('donor', 'name email')
     .populate('bloodBank', 'name address location');
+
+    // Create Audit Log
+    const ip = req.headers.get('x-forwarded-for') || req.headers.get('remote-addr') || 'unknown';
+    const userAgent = req.headers.get('user-agent') || 'unknown';
+    await AuditLog.create({
+      action: 'STATUS_CHANGED',
+      entityType: 'Appointment',
+      entityId: updatedAppointment._id,
+      performedBy: session.user.id,
+      performedByRole: session.user.role,
+      previousState,
+      newState: { status: updatedAppointment.status, trackingStatus: updatedAppointment.trackingStatus },
+      ipAddress: ip,
+      userAgent
+    });
 
     // Send Email Notifications
     if (updatedAppointment && updatedAppointment.donor && updatedAppointment.donor.email) {

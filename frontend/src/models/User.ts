@@ -22,6 +22,7 @@ const UserSchema = new Schema({
   },
   // Donor specific fields
   isAvailable: { type: Boolean, default: true },
+  isAnonymous: { type: Boolean, default: false }, // HIPAA/Privacy compliance
   lastDonationDate: { type: Date },
   healthConditions: { type: String },
   donationCount: { type: Number, default: 0 },

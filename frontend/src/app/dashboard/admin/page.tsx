@@ -62,6 +62,7 @@ export default function AdminDashboard() {
   const [requests, setRequests] = useState<any[]>([]);
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
+  const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [appointmentTab, setAppointmentTab] = useState<'pending' | 'upcoming' | 'completed'>('pending');
   const [requestTab, setRequestTab] = useState<'pending' | 'approved' | 'fulfilled' | 'rejected'>('pending');
@@ -129,6 +130,7 @@ export default function AdminDashboard() {
       if (activeTab === "requests") fetchRequests();
       if (activeTab === "volunteers") fetchVolunteers();
       if (activeTab === "feedback") fetchFeedbacks();
+      if (activeTab === "audit logs") fetchAuditLogs();
     }
   }, [activeTab, status, session]);
 
@@ -233,6 +235,11 @@ export default function AdminDashboard() {
   const fetchFeedbacks = async () => {
     const res = await fetch("/api/feedback?all=true");
     if (res.ok) setFeedbacks(await res.json());
+  };
+
+  const fetchAuditLogs = async () => {
+    const res = await fetch("/api/admin/audit-logs");
+    if (res.ok) setAuditLogs(await res.json());
   };
 
   const handleAddBank = async (e: React.FormEvent) => {
@@ -437,7 +444,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
-            {["overview", "emergencies", "bloodbanks", "appointments", "requests", "users", "volunteers", "feedback"].map((tab) => (
+            {["overview", "emergencies", "bloodbanks", "appointments", "requests", "users", "volunteers", "feedback", "audit logs"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1231,6 +1238,97 @@ export default function AdminDashboard() {
               </div>
             </motion.div>
           )}
+
+          {activeTab === "audit logs" && (
+            <motion.div
+              key="audit logs"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+            >
+              <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <h2 className="text-lg font-semibold text-gray-900 px-2 flex items-center">
+                    <Activity className="h-5 w-5 mr-2 text-blue-600" />
+                    Security & Audit Logs
+                  </h2>
+                  <button 
+                    onClick={() => exportToCSV(auditLogs, 'audit_logs')}
+                    className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export</span>
+                  </button>
+                </div>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Timestamp</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Entity</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Performed By</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Changes</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">IP Address</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200 text-sm">
+                    {auditLogs.map((log) => (
+                      <tr key={log._id || log.timestamp} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-500">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap font-medium text-gray-900">
+                          <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
+                            {log.action}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-600">
+                          {log.entityType}
+                          <div className="text-xs text-gray-400 truncate max-w-[120px]" title={log.entityId}>
+                            {log.entityId}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          {log.performedBy ? (
+                            <div>
+                              <div className="text-gray-900">{log.performedBy.name}</div>
+                              <div className="text-gray-500 text-xs uppercase">{log.performedByRole}</div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">System</span>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-wrap text-xs text-gray-500 max-w-xs">
+                          {log.action === 'STATUS_CHANGED' && log.newState?.status && (
+                            <div className="flex items-center space-x-2">
+                              <span className="text-red-500 line-through">{log.previousState?.status || 'none'}</span>
+                              <span>→</span>
+                              <span className="text-green-600 font-medium">{log.newState?.status}</span>
+                            </div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-gray-400 font-mono text-xs text-right">
+                          {log.ipAddress || 'unknown'}
+                        </td>
+                      </tr>
+                    ))}
+                    {auditLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                          No audit logs found.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </motion.div>
+          )}
+
         </AnimatePresence>
       </div>
 
