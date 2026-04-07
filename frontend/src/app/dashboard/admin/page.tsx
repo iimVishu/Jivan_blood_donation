@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users, Droplet, Activity, AlertCircle, Plus, MapPin, Calendar, Check, X, Trash2, AlertTriangle, Siren, Megaphone, MessageSquare, Star, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import EmergencyAlertsList from "@/components/EmergencyAlertsList";
+import LocationPicker from "@/components/LocationPicker";
 import { motion, AnimatePresence } from "framer-motion";
 
 const exportToCSV = (data: any[], filename: string) => {
@@ -616,6 +617,18 @@ export default function AdminDashboard() {
                           onChange={(e) => setNewBank({...newBank, address: {...newBank.address, state: e.target.value}})}
                           required
                         />
+                        <div className="md:col-span-2">
+                          <LocationPicker 
+                            onLocationChange={(lat, lng) => {
+                              setNewBank({
+                                ...newBank, 
+                                location: { type: 'Point', coordinates: [lng, lat] }
+                              });
+                            }}
+                            initialLat={newBank.location.coordinates[1] || 28.7041}
+                            initialLng={newBank.location.coordinates[0] || 77.1025}
+                          />
+                        </div>
                         <div className="md:col-span-2 flex justify-end space-x-2">
                           <button type="button" onClick={() => setShowAddBank(false)} className="px-4 py-2 text-gray-600">Cancel</button>
                           <button type="submit" className="px-4 py-2 bg-red-600 text-white rounded">Save</button>
