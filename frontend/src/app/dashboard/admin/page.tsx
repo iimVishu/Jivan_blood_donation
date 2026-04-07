@@ -70,6 +70,7 @@ export default function AdminDashboard() {
   const [requestTab, setRequestTab] = useState<'pending' | 'approved' | 'fulfilled' | 'rejected'>('pending');
   const [campTab, setCampTab] = useState<'pending' | 'approved' | 'rejected' | 'completed'>('pending');
   const [volunteerTab, setVolunteerTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
+  const [userRoleTab, setUserRoleTab] = useState<'all' | 'admin' | 'donor' | 'recipient' | 'hospital'>('all');
 
   const filteredAppointments = appointments.filter((apt) => {
     if (appointmentTab === 'pending') return apt.status === 'pending';
@@ -86,6 +87,12 @@ export default function AdminDashboard() {
   const filteredRequests = requests.filter(r => r.status === requestTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
   const filteredCamps = camps.filter(c => c.status === campTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
   const filteredVolunteers = volunteers.filter(v => v.status === volunteerTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
+  const filteredUsers = users
+    .filter((user) => userRoleTab === 'all' || user.role === userRoleTab)
+    .sort((a, b) => {
+      // Keep newest registrations first for easier admin review.
+      return new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime();
+    });
 
   // Disaster Mode State
   const [showDisasterModal, setShowDisasterModal] = useState(false);
@@ -994,6 +1001,27 @@ export default function AdminDashboard() {
                   <span>Export</span>
                 </button>
               </div>
+
+                <div className="px-6 py-4 border-b border-gray-100">
+                  <div className="flex gap-2 bg-gray-50 p-1 rounded-lg overflow-x-auto w-max max-w-full">
+                    {(['all', 'admin', 'donor', 'recipient', 'hospital'] as const).map((role) => (
+                      <button
+                        key={role}
+                        onClick={() => setUserRoleTab(role)}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize whitespace-nowrap ${
+                          userRoleTab === role
+                            ? 'bg-white text-gray-900 shadow border-gray-200'
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {role}
+                        <span className="ml-2 text-xs text-gray-400">
+                          ({role === 'all' ? users.length : users.filter((u) => u.role === role).length})
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
               
               <AnimatePresence>
                 {showLinkModal && (
@@ -1067,7 +1095,7 @@ export default function AdminDashboard() {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {users.map((user) => (
+                    {filteredUsers.map((user) => (
                       <tr key={user._id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
                           {user.name}
@@ -1107,6 +1135,13 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
+                    {filteredUsers.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-6 py-8 text-center text-gray-500">
+                          No users found for role: <span className="capitalize">{userRoleTab}</span>
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
