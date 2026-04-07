@@ -60,12 +60,14 @@ export default function AdminDashboard() {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
   const [requests, setRequests] = useState<any[]>([]);
+  const [camps, setCamps] = useState<any[]>([]);
   const [volunteers, setVolunteers] = useState<any[]>([]);
   const [feedbacks, setFeedbacks] = useState<any[]>([]);
   const [auditLogs, setAuditLogs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [appointmentTab, setAppointmentTab] = useState<'pending' | 'upcoming' | 'completed'>('pending');
   const [requestTab, setRequestTab] = useState<'pending' | 'approved' | 'fulfilled' | 'rejected'>('pending');
+  const [campTab, setCampTab] = useState<'pending' | 'approved' | 'rejected' | 'completed'>('pending');
   const [volunteerTab, setVolunteerTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
 
   const filteredAppointments = appointments.filter((apt) => {
@@ -81,6 +83,7 @@ export default function AdminDashboard() {
   });
 
   const filteredRequests = requests.filter(r => r.status === requestTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
+  const filteredCamps = camps.filter(c => c.status === campTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
   const filteredVolunteers = volunteers.filter(v => v.status === volunteerTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
 
   // Disaster Mode State
@@ -128,6 +131,7 @@ export default function AdminDashboard() {
       if (activeTab === "appointments") fetchAppointments();
       if (activeTab === "users") fetchUsers();
       if (activeTab === "requests") fetchRequests();
+      if (activeTab === "camps") fetchCamps();
       if (activeTab === "volunteers") fetchVolunteers();
       if (activeTab === "feedback") fetchFeedbacks();
       if (activeTab === "audit logs") fetchAuditLogs();
@@ -225,6 +229,11 @@ export default function AdminDashboard() {
   const fetchRequests = async () => {
     const res = await fetch("/api/requests");
     if (res.ok) setRequests(await res.json());
+  };
+
+  const fetchCamps = async () => {
+    const res = await fetch("/api/camps");
+    if (res.ok) setCamps(await res.json());
   };
 
   const fetchVolunteers = async () => {
@@ -341,6 +350,21 @@ export default function AdminDashboard() {
     }
   };
 
+  const updateCampStatus = async (id: string, status: string) => {
+    try {
+      const res = await fetch(`/api/admin/camps/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (res.ok) {
+        fetchCamps();
+      }
+    } catch (error) {
+      console.error("Error updating camp:", error);
+    }
+  };
+
   const updateVolunteerStatus = async (id: string, status: string) => {
     try {
       const res = await fetch(`/api/admin/volunteers/${id}`, {
@@ -444,7 +468,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
-            {["overview", "emergencies", "bloodbanks", "appointments", "requests", "users", "volunteers", "feedback", "audit logs"].map((tab) => (
+            {["overview", "emergencies", "bloodbanks", "appointments", "requests", "camps", "users", "volunteers", "feedback", "audit logs"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -837,17 +861,118 @@ export default function AdminDashboard() {
             </motion.div>
           )}
 
+          {activeTab === "camps" && (
+              <motion.div
+                key="camps"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between space-y-4 sm:space-y-0">
+                  <div className="flex items-center space-x-4">
+                    <h2 className="text-lg font-semibold text-gray-900 px-2">Camp Requests</h2>
+                    <button 
+                      onClick={() => exportToCSV(camps, 'blood_camps')}
+                      className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
+                    >
+                      <Download className="h-4 w-4" />
+                      <span>Export</span>
+                    </button>
+                  </div>
+                  <div className="flex space-x-2 bg-gray-50 p-1 rounded-lg overflow-x-auto">
+                    {(['pending', 'approved', 'rejected', 'completed'] as const).map((tab) => (
+                      <button
+                        key={tab}
+                        onClick={() => setCampTab(tab)}
+                        className={`px-4 py-2 text-sm font-medium rounded-md transition-colors capitalize ${
+                          campTab === tab
+                            ? 'bg-white text-gray-900 shadow border-gray-200'
+                            : 'text-gray-500 hover:text-gray-700'
+                        }`}
+                      >
+                        {tab}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Organizer</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date & Venue</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Expected</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {filteredCamps.map((camp) => (
+                        <tr key={camp._id}>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm font-medium text-gray-900">{camp.organizerName}</div>
+                            <div className="text-sm text-gray-500">{camp.organizationName}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{camp.phone}</div>
+                            <div className="text-sm text-gray-500">{camp.email}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <div className="text-sm text-gray-900">{new Date(camp.proposedDate).toLocaleDateString()}</div>
+                            <div className="text-sm text-gray-500">{camp.city}</div>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                            {camp.expectedDonors}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap">
+                            <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full 
+                              ${camp.status === 'approved' ? 'bg-green-100 text-green-800' : 
+                                camp.status === 'pending' ? 'bg-yellow-100 text-yellow-800' : 
+                                camp.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                                'bg-gray-100 text-gray-800'}`}>
+                              {camp.status}
+                            </span>
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                            {camp.status === 'pending' && (
+                              <>
+                                <button onClick={() => updateCampStatus(camp._id, 'approved')} className="text-green-600 hover:text-green-900"><Check className="h-5 w-5" /></button>
+                                <button onClick={() => updateCampStatus(camp._id, 'rejected')} className="text-red-600 hover:text-red-900"><X className="h-5 w-5" /></button>
+                              </>
+                            )}
+                            {camp.status === 'approved' && (
+                              <button onClick={() => updateCampStatus(camp._id, 'completed')} className="text-blue-600 hover:text-blue-900">Mark Completed</button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                      {filteredCamps.length === 0 && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-8 text-center text-gray-500">
+                            No {campTab} camps found.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </motion.div>
+            )}
+
           {activeTab === "users" && (
-            <motion.div
-              key="users"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={{ duration: 0.3 }}
-              className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
-            >
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-900">Registered Users</h2>
+              <motion.div
+                key="users"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={{ duration: 0.3 }}
+                className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden"
+              >
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+                  <h2 className="text-lg font-semibold text-gray-900">Registered Users</h2>
                 <button 
                   onClick={() => exportToCSV(users, 'users')}
                   className="flex items-center space-x-1 text-sm text-gray-600 hover:text-red-600 transition-colors"
