@@ -339,25 +339,25 @@ export default function DonorDashboard() {
                           >
                             {/* Feedback Required Banner */}
                             {!appointment.feedbackSubmitted && (
-                              <div className="mb-3 p-2 bg-orange-50 border border-orange-200 rounded-lg flex items-center justify-between">
+                              <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
                                 <div className="flex items-center text-orange-700 text-sm">
-                                  <MessageSquare className="h-4 w-4 mr-2" />
+                                  <MessageSquare className="h-4 w-4 mr-2 flex-shrink-0" />
                                   <span className="font-medium">Feedback required for this donation</span>
                                 </div>
                                 <motion.button
                                   whileHover={{ scale: 1.05 }}
                                   whileTap={{ scale: 0.95 }}
                                   onClick={() => openFeedbackModal(appointment)}
-                                  className="px-3 py-1 bg-orange-500 text-white text-xs font-medium rounded-md hover:bg-orange-600"
+                                  className="w-full sm:w-auto px-3 py-2 bg-orange-500 text-white text-xs font-medium rounded-md hover:bg-orange-600 text-center"
                                 >
                                   Give Feedback
                                 </motion.button>
                               </div>
                             )}
                             
-                            <div className="flex items-center justify-between mb-4">
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-4 sm:gap-0">
                               <div className="flex items-center space-x-4">
-                                <div className="bg-green-100 p-2 rounded-full">
+                                <div className="bg-green-100 p-2 rounded-full flex-shrink-0">
                                   <CheckCircle className="h-5 w-5 text-green-600" />
                                 </div>
                                 <div>
@@ -365,10 +365,10 @@ export default function DonorDashboard() {
                                   <p className="text-sm text-gray-600">{appointment.bloodBank?.name}</p>
                                 </div>
                               </div>
-                              <div className="flex items-center space-x-2">
+                              <div className="flex flex-wrap items-center gap-2">
                                 {appointment.feedbackSubmitted && (
-                                  <span className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full">
-                                    <CheckCircle className="h-3 w-3 mr-1" />
+                                  <span className="flex items-center text-xs text-green-600 bg-green-50 px-2 py-1 rounded-full whitespace-nowrap">
+                                    <CheckCircle className="h-3 w-3 mr-1 flex-shrink-0" />
                                     Feedback Given
                                   </span>
                                 )}
@@ -377,7 +377,7 @@ export default function DonorDashboard() {
                                   whileTap={{ scale: 0.95 }}
                                   onClick={() => downloadCertificate(appointment.date)}
                                   disabled={isGenerating}
-                                  className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 text-sm transition-colors"
+                                  className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 text-sm transition-colors whitespace-nowrap"
                                 >
                                   <Download className="h-4 w-4" />
                                   <span>Certificate</span>
@@ -514,17 +514,17 @@ export default function DonorDashboard() {
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
               transition={{ duration: 0.3 }}
-              className="flex flex-col items-center justify-center py-12"
+              className="flex flex-col items-center justify-center py-8 sm:py-12 px-2 sm:px-4 overflow-hidden"
             >
-              <div className="mb-8 text-center">
-                <h2 className="text-2xl font-bold text-gray-900">Your Digital Donor ID</h2>
-                <p className="text-gray-600 mt-2">Show this card at blood banks for quick verification</p>
+              <div className="mb-6 sm:mb-8 text-center">
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Your Digital Donor ID</h2>
+                <p className="text-sm sm:text-base text-gray-600 mt-2 px-4">Show this card at blood banks for quick verification</p>
               </div>
               
               {profile ? (
                 <motion.div 
                   whileHover={{ rotateY: 5, rotateX: 5 }}
-                  className="w-full max-w-md perspective-1000"
+                  className="w-full max-w-sm sm:max-w-md perspective-1000 transform transition-transform duration-300 mx-auto px-2 sm:px-0"
                 >
                   <DigitalDonorCard 
                     user={{
@@ -580,18 +580,18 @@ export default function DonorDashboard() {
                 <h2 className="text-xl font-semibold text-gray-900">Privacy & Settings</h2>
                 <p className="text-gray-500 mt-1">Manage your data compliance and anonymity settings.</p>
               </div>
-              <div className="p-6">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 mb-6">
-                  <div>
-                    <h3 className="font-medium text-gray-900 flex items-center">
-                      <span className="bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mr-2 font-bold uppercase tracking-wide">HIPAA Mode</span>
+              <div className="p-4 sm:p-6">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 mb-6 gap-4 sm:gap-0">
+                  <div className="flex-1">
+                    <h3 className="font-medium text-gray-900 flex flex-wrap items-center gap-2">
+                      <span className="bg-blue-100 text-blue-800 text-[10px] sm:text-xs px-2 py-1 rounded font-bold uppercase tracking-wide">HIPAA Mode</span>
                       Anonymous Donation
                     </h3>
-                    <p className="text-sm text-gray-500 mt-1 max-w-xl">
+                    <p className="text-xs sm:text-sm text-gray-500 mt-2 max-w-xl">
                       When enabled, hospitals and blood banks will only see you as an "Anonymous Donor". Your real name and phone number will be hidden from their records.
                     </p>
                   </div>
-                  <div>
+                  <div className="shrink-0 self-end sm:self-auto">
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input 
                         type="checkbox" 
