@@ -16,6 +16,13 @@ export default function Home() {
   });
 
   const [activeDisaster, setActiveDisaster] = useState<any>(null);
+  const [stats, setStats] = useState({
+    unitsShortage: "2.1M",
+    annualSupply: "13M",
+    unitsCollected: "28K",
+    livesSaved: "276K",
+    campsDeployed: "222"
+  });
 
   useEffect(() => {
     const fetchDisaster = async () => {
@@ -30,6 +37,27 @@ export default function Home() {
       }
     };
     fetchDisaster();
+
+    const fetchStats = async () => {
+      try {
+        const res = await fetch("/api/public/stats");
+        if (res.ok) {
+          const data = await res.json();
+          // We only replace the defaults if DB has data to show, otherwise we can keep defaults for aesthetic or handle them.
+          // Since the user asked for REAL data:
+          setStats({
+            unitsShortage: data.unitsShortage.toLocaleString() + "",
+            annualSupply: data.annualSupply.toLocaleString() + "",
+            unitsCollected: data.unitsCollected.toLocaleString() + "",
+            livesSaved: data.livesSaved.toLocaleString() + "",
+            campsDeployed: data.campsDeployed.toLocaleString() + ""
+          });
+        }
+      } catch (error) {
+        console.error("Error fetching stats:", error);
+      }
+    };
+    fetchStats();
   }, []);
 
   const opacity = useTransform(scrollYProgress, [0, 0.5], [0, 1]);
@@ -166,7 +194,7 @@ export default function Home() {
                   transition={{ delay: 0.2 }}
                   className="border-b border-gray-100 pb-8"
                 >
-                  <div className="text-6xl font-light text-black mb-2">2.1M</div>
+                  <div className="text-6xl font-light text-black mb-2">{stats.unitsShortage}</div>
                   <div className="text-sm text-gray-400 uppercase tracking-widest">Units Shortage</div>
                 </motion.div>
                 <motion.div 
@@ -176,7 +204,7 @@ export default function Home() {
                   transition={{ delay: 0.4 }}
                   className="border-b border-gray-100 pb-8"
                 >
-                  <div className="text-6xl font-light text-black mb-2">13M</div>
+                  <div className="text-6xl font-light text-black mb-2">{stats.annualSupply}</div>
                   <div className="text-sm text-gray-400 uppercase tracking-widest">Annual Supply</div>
                 </motion.div>
               </div>
@@ -234,9 +262,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-16 text-center">
             {[
-              { value: "28K", label: "Units Collected" },
-              { value: "276K", label: "Lives Saved" },
-              { value: "222", label: "Camps Deployed" }
+              { value: stats.unitsCollected, label: "Units Collected" },
+              { value: stats.livesSaved, label: "Lives Saved" },
+              { value: stats.campsDeployed, label: "Camps Deployed" }
             ].map((stat, idx) => (
               <motion.div
                 key={idx}
