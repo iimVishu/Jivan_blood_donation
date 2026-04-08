@@ -95,6 +95,14 @@ function LoginForm() {
           </div>
         </div>
 
+        <div className="flex items-center justify-between">
+          <div className="text-sm">
+            <Link href="/forgot-password" className="font-medium text-red-600 hover:text-red-500 transition-colors duration-200">
+              Forgot your password?
+            </Link>
+          </div>
+        </div>
+
         <AnimatePresence mode="wait">
           {error && (
             <motion.div 
