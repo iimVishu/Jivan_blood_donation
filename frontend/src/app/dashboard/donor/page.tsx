@@ -67,13 +67,17 @@ export default function DonorDashboard() {
             (apt: Appointment) => apt.status === 'completed' && !apt.feedbackSubmitted
           );
           if (needsFeedback) {
-            setPendingFeedbackAppointment(needsFeedback);
-            setFeedbackModal({
-              isOpen: true,
-              appointmentId: needsFeedback._id,
-              bloodBankName: needsFeedback.bloodBank?.name || 'Blood Bank',
-              donationDate: needsFeedback.date
-            });
+            // Check if dismissed in this session
+            const isDismissed = sessionStorage.getItem(`feedbackDismissed_${needsFeedback._id}`);
+            if (!isDismissed) {
+              setPendingFeedbackAppointment(needsFeedback);
+              setFeedbackModal({
+                isOpen: true,
+                appointmentId: needsFeedback._id,
+                bloodBankName: needsFeedback.bloodBank?.name || 'Blood Bank',
+                donationDate: needsFeedback.date
+              });
+            }
           }
         }
       } catch (error) {
@@ -635,7 +639,12 @@ export default function DonorDashboard() {
         {/* Feedback Modal */}
         <FeedbackModal
           isOpen={feedbackModal.isOpen}
-          onClose={() => setFeedbackModal(prev => ({ ...prev, isOpen: false }))}
+          onClose={() => {
+            if (feedbackModal.appointmentId) {
+              sessionStorage.setItem(`feedbackDismissed_${feedbackModal.appointmentId}`, 'true');
+            }
+            setFeedbackModal(prev => ({ ...prev, isOpen: false }));
+          }}
           appointmentId={feedbackModal.appointmentId}
           bloodBankName={feedbackModal.bloodBankName}
           donationDate={feedbackModal.donationDate}
