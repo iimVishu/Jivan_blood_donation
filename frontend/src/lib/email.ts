@@ -53,24 +53,64 @@ export const sendAppointmentConfirmationEmail = async (
   address: string,
   locationLink: string
 ) => {
-  const subject = 'Appointment Confirmed - Jeevan Blood Donation';
+  const subject = '📅 Appointment Confirmed - Jeevan Blood Donation';
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #dc2626;">Appointment Confirmed</h2>
-      <p>Dear ${donorName},</p>
-      <p>Your blood donation appointment has been confirmed.</p>
-      
-      <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p><strong>Date:</strong> ${new Date(date).toLocaleDateString()}</p>
-        <p><strong>Blood Bank:</strong> ${bloodBankName}</p>
-        <p><strong>Address:</strong> ${address}</p>
-        <p><strong>Location:</strong> <a href="${locationLink}" target="_blank">View on Map</a></p>
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <div style="background: linear-gradient(135deg, #16a34a 0%, #15803d 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">✅ Appointment Confirmed</h1>
       </div>
-
-      <p>Please arrive 10 minutes early. Remember to stay hydrated and eat a light meal before donating.</p>
       
-      <p>Thank you for saving lives!</p>
-      <p>Team Jeevan</p>
+      <div style="padding: 40px 30px; background-color: #f9fafb;">
+        <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">Dear <strong>${donorName}</strong>,</p>
+        
+        <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+          Your blood donation appointment has been successfully scheduled and confirmed. Here are the details of your upcoming visit:
+        </p>
+        
+        <div style="background-color: #ffffff; border: 1px solid #e5e7eb; border-left: 5px solid #16a34a; padding: 25px; border-radius: 8px; margin: 30px 0; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+          <table style="width: 100%; border-collapse: collapse; color: #374151;">
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; width: 30%; font-size: 15px;">🗓️ Date:</td>
+              <td style="padding: 8px 0; font-weight: 600; font-size: 15px;">${new Date(date).toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 15px;">🏥 Center:</td>
+              <td style="padding: 8px 0; font-weight: 600; font-size: 15px;">${bloodBankName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; color: #6b7280; font-size: 15px;">📍 Address:</td>
+              <td style="padding: 8px 0; font-weight: 600; font-size: 15px; line-height: 1.4;">${address}</td>
+            </tr>
+          </table>
+          
+          <div style="margin-top: 25px; text-align: center;">
+            <a href="${locationLink}" target="_blank" style="display: inline-block; background-color: #eff6ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 10px 24px; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 14px; transition: all 0.2s;">
+              📍 View Center on Map
+            </a>
+          </div>
+        </div>
+
+        <div style="background-color: #fffbeb; padding: 20px; border-radius: 8px; margin-bottom: 30px; border-left: 4px solid #f59e0b;">
+          <h4 style="color: #b45309; margin: 0 0 10px 0; font-size: 16px;">Important Reminders:</h4>
+          <ul style="margin: 0; padding-left: 20px; color: #78350f; font-size: 14px; line-height: 1.6;">
+            <li>Please arrive <strong>10 minutes early</strong> to complete the registration.</li>
+            <li>Remember to bring a valid government ID.</li>
+            <li>Stay well-hydrated and eat a healthy, light meal before donating.</li>
+          </ul>
+        </div>
+        
+        <p style="color: #4b5563; font-size: 16px; margin-bottom: 0;">
+          Together, we are making a difference. Thank you for your commitment to saving lives!
+        </p>
+      </div>
+      
+      <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 13px; margin: 0 0 5px 0;">Warm regards,</p>
+        <p style="color: #374151; font-weight: bold; font-size: 15px; margin: 0 0 15px 0;">Team Jeevan</p>
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+          &copy; ${new Date().getFullYear()} Jeevan Blood Donation. All rights reserved.
+        </p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
@@ -83,19 +123,50 @@ export const sendAppointmentRejectionEmail = async (
   bloodBankName: string,
   reason?: string
 ) => {
-  const subject = 'Appointment Update - Jeevan Blood Donation';
+  const subject = '⚠️ Appointment Update - Jeevan Blood Donation';
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #dc2626;">Appointment Update</h2>
-      <p>Dear ${donorName},</p>
-      <p>We regret to inform you that your appointment scheduled for ${new Date(date).toLocaleDateString()} at ${bloodBankName} has been cancelled/rejected.</p>
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <div style="background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%); padding: 30px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 24px; font-weight: 700;">Appointment Update</h1>
+      </div>
       
-      ${reason ? `<p><strong>Reason:</strong> ${reason}</p>` : ''}
+      <div style="padding: 40px 30px; background-color: #f9fafb;">
+        <p style="font-size: 16px; color: #374151; margin-bottom: 20px;">Dear <strong>${donorName}</strong>,</p>
+        
+        <p style="color: #4b5563; line-height: 1.6; font-size: 16px;">
+          We are writing to inform you about an update regarding your blood donation appointment scheduled for <strong>${new Date(date).toLocaleDateString('en-US', { dateStyle: 'medium' })}</strong> at <strong>${bloodBankName}</strong>. 
+          Unfortunately, this appointment has been <strong>cancelled</strong>.
+        </p>
+        
+        ${reason ? `
+        <div style="background-color: #fee2e2; border-left: 4px solid #ef4444; padding: 20px; border-radius: 8px; margin: 25px 0;">
+          <h4 style="color: #991b1b; margin: 0 0 8px 0; font-size: 15px;">Reason for Cancellation:</h4>
+          <p style="color: #7f1d1d; margin: 0; font-size: 15px;">${reason}</p>
+        </div>
+        ` : ''}
+        
+        <p style="color: #4b5563; line-height: 1.6; font-size: 16px; margin: 25px 0;">
+          We sincerely apologize for any inconvenience this may cause you. Your willingness to help the community is deeply appreciated, and we would love to see you soon.
+        </p>
+        
+        <div style="text-align: center; margin: 35px 0;">
+          <a href="${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/dashboard/donor" style="background-color: #ef4444; color: #ffffff; padding: 14px 28px; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 15px; display: inline-block;">
+            Reschedule Appointment
+          </a>
+        </div>
+        
+        <p style="color: #6b7280; font-size: 15px; text-align: center; margin-bottom: 0;">
+          Thank you for your patience and understanding.
+        </p>
+      </div>
       
-      <p>Please feel free to schedule another appointment at a different time or location.</p>
-      
-      <p>Thank you for your understanding.</p>
-      <p>Team Jeevan</p>
+      <div style="background-color: #f3f4f6; padding: 20px; text-align: center; border-top: 1px solid #e5e7eb;">
+        <p style="color: #6b7280; font-size: 13px; margin: 0 0 5px 0;">Best regards,</p>
+        <p style="color: #374151; font-weight: bold; font-size: 15px; margin: 0 0 15px 0;">Team Jeevan</p>
+        <p style="color: #9ca3af; font-size: 12px; margin: 0;">
+          &copy; ${new Date().getFullYear()} Jeevan Blood Donation. All rights reserved.
+        </p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
@@ -106,23 +177,54 @@ export const sendDonationThankYouEmail = async (
   amount: number,
   paymentId: string
 ) => {
-  const subject = 'Thank You for Your Donation - Jeevan Blood Donation';
+  const subject = '💝 Thank You for Your Generous Support - Jeevan Blood Donation';
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-      <h2 style="color: #dc2626;">Thank You for Your Support!</h2>
-      <p>Dear Donor,</p>
-      <p>We have successfully received your donation of <strong>₹${amount}</strong>.</p>
-      
-      <div style="background-color: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-        <p><strong>Transaction ID:</strong> ${paymentId}</p>
-        <p><strong>Amount:</strong> ₹${amount}</p>
-        <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+    <div style="font-family: 'Inter', Arial, sans-serif; max-width: 600px; margin: 0 auto; background-color: #ffffff; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);">
+      <div style="background: linear-gradient(135deg, #0ea5e9 0%, #0369a1 100%); padding: 35px 20px; text-align: center;">
+        <div style="font-size: 48px; margin-bottom: 15px;">💌</div>
+        <h1 style="color: #ffffff; margin: 0; font-size: 26px; font-weight: 700;">Thank You For Your Support!</h1>
       </div>
-
-      <p>Your contribution helps us organize more blood donation camps and save more lives. We truly appreciate your generosity.</p>
       
-      <p>With gratitude,</p>
-      <p>Team Jeevan</p>
+      <div style="padding: 40px 30px; background-color: #f9fafb;">
+        <p style="font-size: 18px; color: #1e293b; margin-bottom: 25px; text-align: center; font-weight: 600;">
+          Your kindness fuels our mission.
+        </p>
+        
+        <p style="color: #4b5563; line-height: 1.6; font-size: 16px; text-align: center;">
+          We are deeply grateful to inform you that we have successfully received your generous monetary donation of <strong>₹${amount.toLocaleString('en-IN')}</strong>.
+        </p>
+        
+        <div style="background-color: #ffffff; border: 1px dashed #cbd5e1; border-radius: 10px; padding: 25px; margin: 35px 0; display: flex; flex-direction: column; gap: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02);">
+          <h3 style="color: #0c4a6e; margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #e2e8f0; padding-bottom: 10px; text-align: center;">Transaction Receipt</h3>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px dotted #cbd5e1;">
+            <span style="color: #64748b; font-size: 14px;">Amount Donated:</span>
+            <span style="color: #0f172a; font-weight: 700; font-size: 16px;">₹${amount.toLocaleString('en-IN')}</span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px dotted #cbd5e1;">
+            <span style="color: #64748b; font-size: 14px;">Transaction ID:</span>
+            <span style="color: #0f172a; font-weight: 600; font-size: 13px; font-family: monospace;">${paymentId}</span>
+          </div>
+          
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <span style="color: #64748b; font-size: 14px;">Date:</span>
+            <span style="color: #0f172a; font-weight: 600; font-size: 14px;">${new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}</span>
+          </div>
+        </div>
+
+        <p style="color: #4b5563; line-height: 1.6; font-size: 15px; text-align: center; font-style: italic; background-color: #f1f5f9; padding: 20px; border-radius: 8px;">
+          "Your contribution directly helps us organize more lifesaving blood donation camps, upgrade storage facilities, and connect critical patients with blood donors. We truly and deeply appreciate your generosity."
+        </p>
+      </div>
+      
+      <div style="background-color: #f8fafc; padding: 25px; text-align: center; border-top: 1px solid #e2e8f0;">
+        <p style="color: #64748b; font-size: 14px; margin: 0 0 8px 0;">With endless gratitude,</p>
+        <p style="color: #0f172a; font-weight: 700; font-size: 16px; margin: 0 0 20px 0;">Team Jeevan</p>
+        <p style="color: #94a3b8; font-size: 12px; margin: 0;">
+          &copy; ${new Date().getFullYear()} Jeevan Blood Donation Organization. All rights reserved.
+        </p>
+      </div>
     </div>
   `;
   return sendEmail(to, subject, html);
