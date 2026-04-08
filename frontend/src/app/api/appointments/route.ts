@@ -12,8 +12,14 @@ export async function GET(req: Request) {
     }
 
     await dbConnect();
+
+    const { searchParams } = new URL(req.url);
+    const daysParam = searchParams.get("days");
+    const range = searchParams.get("range");
+    const parsedDays = Number(daysParam);
+    const shouldApplyDateFilter = range !== "all" && Number.isFinite(parsedDays) && parsedDays > 0;
     
-    let query = {};
+    let query: any = {};
     if (session.user.role === 'donor') {
       query = { donor: session.user.id };
     } else if (session.user.role === 'hospital') {
@@ -27,6 +33,12 @@ export async function GET(req: Request) {
         // If hospital user is not linked to a blood bank, return empty or handle error
         return NextResponse.json([]);
       }
+    }
+
+    if (shouldApplyDateFilter) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parsedDays);
+      query.date = { $gte: cutoffDate };
     }
 
     const appointments = await Appointment.find(query)

@@ -4,12 +4,12 @@ const AuditLogSchema = new Schema({
   action: { 
     type: String, 
     required: true,
-    enum: ['CREATED', 'UPDATED', 'DELETED', 'STATUS_CHANGED', 'EXPORTED']
+    enum: ['CREATED', 'UPDATED', 'DELETED', 'STATUS_CHANGED', 'EXPORTED', 'UPDATE_CAMP_STATUS']
   },
   entityType: { 
     type: String, 
     required: true,
-    enum: ['Appointment', 'Request', 'BloodBank', 'User', 'Emergency']
+    enum: ['Appointment', 'Request', 'BloodBank', 'User', 'Emergency', 'Camp']
   },
   entityId: { 
     type: Schema.Types.ObjectId, 

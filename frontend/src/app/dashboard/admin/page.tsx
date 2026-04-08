@@ -71,6 +71,7 @@ export default function AdminDashboard() {
   const [campTab, setCampTab] = useState<'pending' | 'approved' | 'rejected' | 'completed'>('pending');
   const [volunteerTab, setVolunteerTab] = useState<'pending' | 'approved' | 'rejected'>('pending');
   const [userRoleTab, setUserRoleTab] = useState<'all' | 'admin' | 'donor' | 'recipient' | 'hospital'>('all');
+  const [dataRange, setDataRange] = useState<'30d' | 'all'>('30d');
 
   const filteredAppointments = appointments.filter((apt) => {
     if (appointmentTab === 'pending') return apt.status === 'pending';
@@ -144,7 +145,7 @@ export default function AdminDashboard() {
       if (activeTab === "feedback") fetchFeedbacks();
       if (activeTab === "audit logs") fetchAuditLogs();
     }
-  }, [activeTab, status, session]);
+  }, [activeTab, status, session, dataRange]);
 
   const fetchDisasterStatus = async () => {
     try {
@@ -224,8 +225,10 @@ export default function AdminDashboard() {
     if (res.ok) setBloodBanks(await res.json());
   };
 
+  const getRangeQuery = () => (dataRange === '30d' ? 'days=30' : 'range=all');
+
   const fetchAppointments = async () => {
-    const res = await fetch("/api/appointments"); // This needs to return all appointments for admin
+    const res = await fetch(`/api/appointments?${getRangeQuery()}`);
     if (res.ok) setAppointments(await res.json());
   };
 
@@ -235,27 +238,27 @@ export default function AdminDashboard() {
   };
 
   const fetchRequests = async () => {
-    const res = await fetch("/api/requests");
+    const res = await fetch(`/api/requests?${getRangeQuery()}`);
     if (res.ok) setRequests(await res.json());
   };
 
   const fetchCamps = async () => {
-    const res = await fetch("/api/camps");
+    const res = await fetch(`/api/camps?${getRangeQuery()}`);
     if (res.ok) setCamps(await res.json());
   };
 
   const fetchVolunteers = async () => {
-    const res = await fetch("/api/admin/volunteers");
+    const res = await fetch(`/api/admin/volunteers?${getRangeQuery()}`);
     if (res.ok) setVolunteers(await res.json());
   };
 
   const fetchFeedbacks = async () => {
-    const res = await fetch("/api/feedback?all=true");
+    const res = await fetch(`/api/feedback?all=true&${getRangeQuery()}`);
     if (res.ok) setFeedbacks(await res.json());
   };
 
   const fetchAuditLogs = async () => {
-    const res = await fetch("/api/admin/audit-logs");
+    const res = await fetch(`/api/admin/audit-logs?${getRangeQuery()}`);
     if (res.ok) setAuditLogs(await res.json());
   };
 
@@ -509,6 +512,43 @@ export default function AdminDashboard() {
               </button>
             ))}
           </div>
+
+          {[
+            "appointments",
+            "requests",
+            "camps",
+            "volunteers",
+            "feedback",
+            "audit logs"
+          ].includes(activeTab) && (
+            <div className="flex items-center justify-between bg-white border border-gray-200 rounded-lg p-3">
+              <p className="text-sm text-gray-600">
+                Showing <span className="font-semibold">{dataRange === '30d' ? 'last 30 days' : 'all available data'}</span>
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setDataRange('30d')}
+                  className={`px-3 py-1.5 rounded text-sm font-medium ${
+                    dataRange === '30d'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Last 30 days
+                </button>
+                <button
+                  onClick={() => setDataRange('all')}
+                  className={`px-3 py-1.5 rounded text-sm font-medium ${
+                    dataRange === 'all'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  Fetch all from DB
+                </button>
+              </div>
+            </div>
+          )}
         </motion.div>
 
         <AnimatePresence mode="wait">

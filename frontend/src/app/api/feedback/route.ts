@@ -19,10 +19,21 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url);
     const appointmentId = searchParams.get('appointmentId');
     const isAdmin = session.user.role === 'admin';
+    const daysParam = searchParams.get('days');
+    const range = searchParams.get('range');
+    const parsedDays = Number(daysParam);
+    const shouldApplyDateFilter = range !== 'all' && Number.isFinite(parsedDays) && parsedDays > 0;
 
     // If admin is requesting all feedback
     if (isAdmin && searchParams.get('all') === 'true') {
-      const feedbacks = await Feedback.find({})
+      const query: any = {};
+      if (shouldApplyDateFilter) {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - parsedDays);
+        query.createdAt = { $gte: cutoffDate };
+      }
+
+      const feedbacks = await Feedback.find(query)
         .populate('donor', 'name email bloodGroup phone')
         .populate({
           path: 'appointment',

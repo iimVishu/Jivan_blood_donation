@@ -27,7 +27,20 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
     try {
         await dbConnect();
-        const camps = await Camp.find({}).sort({ createdAt: -1 });
+    const { searchParams } = new URL(req.url);
+    const daysParam = searchParams.get("days");
+    const range = searchParams.get("range");
+    const parsedDays = Number(daysParam);
+    const shouldApplyDateFilter = range !== "all" && Number.isFinite(parsedDays) && parsedDays > 0;
+
+    const query: any = {};
+    if (shouldApplyDateFilter) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parsedDays);
+      query.createdAt = { $gte: cutoffDate };
+    }
+
+    const camps = await Camp.find(query).sort({ createdAt: -1 });
         return NextResponse.json(camps);
     } catch (error) {
         console.error("Error fetching camps:", error);

@@ -15,6 +15,10 @@ export async function GET(req: Request) {
     const lng = searchParams.get("lng");
     const radius = searchParams.get("radius") || 10000; // default 10km
     const userId = searchParams.get("userId");
+    const daysParam = searchParams.get("days");
+    const range = searchParams.get("range");
+    const parsedDays = Number(daysParam);
+    const shouldApplyDateFilter = range !== "all" && Number.isFinite(parsedDays) && parsedDays > 0;
 
     let query: any = {};
 
@@ -22,6 +26,12 @@ export async function GET(req: Request) {
     if (bloodGroup) query.bloodGroup = bloodGroup;
     if (urgency) query.urgency = urgency;
     if (status) query.status = status;
+
+    if (shouldApplyDateFilter) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - parsedDays);
+      query.createdAt = { $gte: cutoffDate };
+    }
 
     if (lat && lng) {
       query.location = {
