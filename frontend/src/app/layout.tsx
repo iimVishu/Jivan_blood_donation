@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
+import { NotificationProvider } from "@/components/NotificationProvider";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import EmergencySOS from "@/components/EmergencySOS";
@@ -57,10 +58,12 @@ export default function RootLayout({
       </head>
       <body className={inter.className} suppressHydrationWarning>
         <Providers>
-          <Navbar />
-          <main className="min-h-screen">{children}</main>
-          <Footer />
-          <EmergencySOS />
+          <NotificationProvider>
+            <Navbar />
+            <main className="min-h-screen">{children}</main>
+            <Footer />
+            <EmergencySOS />
+          </NotificationProvider>
         </Providers>
         <Script
           id="register-sw"

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { Users, Droplet, Activity, AlertCircle, Plus, MapPin, Calendar, Check, X, Trash2, AlertTriangle, Siren, Megaphone, MessageSquare, Star, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import EmergencyAlertsList from "@/components/EmergencyAlertsList";
+import AdvancedAnalytics from "@/components/AdvancedAnalytics";
 import LocationPicker from "@/components/LocationPicker";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -183,7 +184,24 @@ export default function AdminDashboard() {
           radius: 10,
           requiredBloodGroups: []
         });
-        alert("Disaster Mode Activated! Broadcast sent to all users.");
+
+        // Trigger Socket.io real-time broadcast via backend
+        try {
+          await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000'}/api/notify`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: `🚨 EMERGENCY: ${disasterData.title}`,
+              message: disasterData.description,
+              type: "error",
+              role: "all"
+            })
+          });
+        } catch (socketErr) {
+          console.error("Socket notification failed, but data saved.", socketErr);
+        }
+
+        alert("Disaster Mode Activated! Real-time broadcast sent to all users.");
       }
     } catch (error) {
       console.error("Error activating disaster mode:", error);
@@ -479,7 +497,7 @@ export default function AdminDashboard() {
           </div>
 
           <div className="flex flex-wrap gap-2 border-b border-gray-200 pb-4 overflow-x-auto">
-            {["overview", "emergencies", "bloodbanks", "appointments", "requests", "camps", "users", "volunteers", "feedback", "audit logs"].map((tab) => (
+            {["overview", "analytics", "emergencies", "bloodbanks", "appointments", "requests", "camps", "users", "volunteers", "feedback", "audit logs"].map((tab) => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -1449,6 +1467,18 @@ export default function AdminDashboard() {
                   )}
                 </div>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === "analytics" && (
+            <motion.div
+              key="analytics"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.3 }}
+            >
+              <AdvancedAnalytics />
             </motion.div>
           )}
 
