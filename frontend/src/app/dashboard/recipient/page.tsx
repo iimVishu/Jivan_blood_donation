@@ -23,6 +23,50 @@ export default function RecipientDashboard() {
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Modal State
+  const [isFulfillModalOpen, setIsFulfillModalOpen] = useState(false);
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
+  const [donorName, setDonorName] = useState("");
+  const [donorEmail, setDonorEmail] = useState("");
+  const [fulfilling, setFulfilling] = useState(false);
+  const [fulfillError, setFulfillError] = useState("");
+
+  const handleOpenFulfillModal = (request: Request) => {
+    setSelectedRequest(request);
+    setIsFulfillModalOpen(true);
+    setDonorName("");
+    setDonorEmail("");
+    setFulfillError("");
+  };
+
+  const handleFulfillRequest = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedRequest) return;
+    setFulfilling(true);
+    setFulfillError("");
+
+    try {
+      const res = await fetch(`/api/requests/${selectedRequest._id}/fulfill`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ donorName, donorEmail }),
+      });
+
+      if (res.ok) {
+        setIsFulfillModalOpen(false);
+        fetchRequests(); // refresh the list
+      } else {
+        const errorData = await res.json();
+        setFulfillError(errorData.error || "Failed to mark fulfilled");
+      }
+    } catch (error) {
+      console.error("Error fulfilling request:", error);
+      setFulfillError("Something went wrong");
+    } finally {
+      setFulfilling(false);
+    }
+  };
+
   useEffect(() => {
     if (status === "loading") return;
     if (!session) {
@@ -158,6 +202,16 @@ export default function RecipientDashboard() {
                         >
                           {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                         </span>
+                        
+                        {(request.status === "approved" || request.status === "pending") && (
+                          <button
+                            onClick={() => handleOpenFulfillModal(request)}
+                            className="mt-2 text-xs font-medium text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded transition-colors"
+                          >
+                            Mark Fulfilled & Certify Donor
+                          </button>
+                        )}
+                        
                         <p className="mt-1 text-xs text-gray-500">
                           {new Date(request.createdAt).toLocaleDateString()}
                         </p>
@@ -170,6 +224,98 @@ export default function RecipientDashboard() {
           </ul>
         </motion.div>
       </div>
+
+      {/* Fulfill Request Modal */}
+      {isFulfillModalOpen && selectedRequest && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:p-0">
+            <div className="fixed inset-0 bg-gray-900 bg-opacity-50 transition-opacity" onClick={() => setIsFulfillModalOpen(false)}></div>
+
+            <span className="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative z-10 inline-block px-4 pt-5 pb-4 overflow-hidden text-left align-bottom transition-all transform bg-white rounded-lg shadow-xl sm:my-8 sm:align-middle sm:max-w-lg sm:w-full sm:p-6"
+            >
+              <div>
+                <div className="flex items-center justify-center w-12 h-12 mx-auto bg-green-100 rounded-full">
+                  <span className="text-2xl text-green-600">🏆</span>
+                </div>
+                <div className="mt-3 text-center sm:mt-5">
+                  <h3 className="text-lg font-medium leading-6 text-gray-900 leading-tight">
+                    Fulfill Request & Reward Donor
+                  </h3>
+                  <div className="mt-2">
+                    <p className="text-sm text-gray-500">
+                      Did someone donate blood for <span className="font-bold">{selectedRequest.patientName}</span>?  
+                      Enter the heroic donor's details below to mark the request as fulfilled and instantly email them a Certificate of Appreciation.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {fulfillError && (
+                <div className="mt-4 p-3 text-sm text-red-600 bg-red-50 rounded bg-opacity-50">
+                  {fulfillError}
+                </div>
+              )}
+
+              <form className="mt-5 sm:mt-6" onSubmit={handleFulfillRequest}>
+                <div className="space-y-4">
+                  <div>
+                    <label htmlFor="donorName" className="block text-sm font-medium text-gray-700 text-left">
+                      Donor's Full Name
+                    </label>
+                    <input
+                      type="text"
+                      id="donorName"
+                      required
+                      value={donorName}
+                      onChange={(e) => setDonorName(e.target.value)}
+                      className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                      placeholder="e.g., Jane Doe"
+                    />
+                  </div>
+                  <div>
+                    <label htmlFor="donorEmail" className="block text-sm font-medium text-gray-700 text-left">
+                      Donor's Email Address
+                    </label>
+                    <input
+                      type="email"
+                      id="donorEmail"
+                      required
+                      value={donorEmail}
+                      onChange={(e) => setDonorEmail(e.target.value)}
+                      className="block w-full px-3 py-2 mt-1 border border-gray-300 rounded-md shadow-sm focus:ring-red-500 focus:border-red-500 sm:text-sm"
+                      placeholder="e.g., hero@example.com"
+                    />
+                  </div>
+                </div>
+                
+                <div className="mt-8 flex justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsFulfillModalOpen(false)}
+                    disabled={fulfilling}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={fulfilling || !donorName.trim() || !donorEmail.trim()}
+                    className="inline-flex justify-center px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md shadow-sm hover:bg-green-700 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {fulfilling ? "Processing & Sending..." : "Send Certificate & Fulfill"}
+                  </button>
+                </div>
+              </form>
+            </motion.div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

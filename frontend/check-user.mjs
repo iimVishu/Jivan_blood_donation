@@ -30,17 +30,24 @@ async function checkUser() {
     await mongoose.connect(MONGODB_URI);
     console.log('Connected to MongoDB');
 
-    const email = 'admin@jeevan.com';
+    const email = process.argv[2];
+
+    if (!email) {
+      console.error('\n❌ Please provide an email address to check.');
+      console.log('Usage: node check-user.mjs <email>\n');
+      process.exit(1);
+    }
+
     const user = await User.findOne({ email });
 
     if (user) {
-      console.log('User found:');
+      console.log('\n✅ User found:');
       console.log('Email:', user.email);
       console.log('Role:', user.role);
       console.log('Is Verified:', user.isVerified);
-      console.log('Password Hash:', user.password ? 'Exists' : 'Missing');
+      console.log('Password Hash:', user.password ? 'Exists' : 'Missing', '\n');
     } else {
-      console.log(`User with email ${email} not found.`);
+      console.log(`\n❌ User with email "${email}" not found.\n`);
     }
 
   } catch (error) {

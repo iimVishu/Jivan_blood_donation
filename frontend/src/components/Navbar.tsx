@@ -23,6 +23,59 @@ export default function Navbar() {
     }
   };
 
+  const role = session?.user?.role;
+
+  // Define nav links based on role
+  const getNavLinks = (): { name: string; href: string; isSpecial?: boolean }[] => {
+    const baseLinks = [
+      { name: 'Home', href: '/' },
+      { name: 'About', href: '/about' },
+      { name: 'Camps', href: '/camps' },
+      { name: 'Leaderboard', href: '/leaderboard' },
+      { name: 'Learn', href: '/education' },
+    ];
+
+    if (!session) {
+      return [
+        ...baseLinks,
+        { name: 'Donate Blood', href: '/donate' },
+        { name: 'Join', href: '/join' },
+        { name: 'Support Us', href: '/donate-money', isSpecial: true },
+        { name: 'Contact', href: '/contact' },
+      ];
+    }
+
+    if (role === 'admin') {
+      return [
+        { name: 'Home', href: '/' },
+        // Admins mostly need dashboard, but we can give them some basic links
+      ];
+    }
+
+    if (role === 'hospital' || role === 'recipient') {
+      return [
+        ...baseLinks,
+        { name: 'Request Blood', href: '/request' },
+        { name: 'Support Us', href: '/donate-money', isSpecial: true },
+        { name: 'Contact', href: '/contact' },
+      ];
+    }
+
+    if (role === 'donor') {
+      return [
+        ...baseLinks,
+        { name: 'Donate Blood', href: '/donate' },
+        { name: 'Check Eligibility', href: '/eligibility' },
+        { name: 'Support Us', href: '/donate-money', isSpecial: true },
+        { name: 'Contact', href: '/contact' },
+      ];
+    }
+
+    return baseLinks;
+  };
+
+  const navLinks = getNavLinks();
+
   return (
     <nav className="bg-white/80 backdrop-blur-md border-b border-gray-100 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -35,47 +88,15 @@ export default function Navbar() {
           </div>
           
           <div className="hidden md:flex items-center space-x-8">
-            <Link href="/" className="text-sm text-gray-600 hover:text-black transition-colors">Home</Link>
-            <Link href="/about" className="text-sm text-gray-600 hover:text-black transition-colors">About</Link>
-            <Link href="/camps" className="text-sm text-gray-600 hover:text-black transition-colors">Camps</Link>
-            <Link href="/leaderboard" className="text-sm text-gray-600 hover:text-black transition-colors">Leaderboard</Link>
-            <Link href="/education" className="text-sm text-gray-600 hover:text-black transition-colors">Learn</Link>
-            
-            {/* Donor specific links */}
-            {session?.user.role === 'donor' && (
-              <>
-                <Link href="/donate" className="text-sm text-gray-600 hover:text-black transition-colors">Donate Blood</Link>
-                <Link href="/eligibility" className="text-sm text-gray-600 hover:text-black transition-colors">Check Eligibility</Link>
-              </>
-            )}
-
-            {/* Recipient specific links */}
-            {session?.user.role === 'recipient' && (
-              <Link href="/request" className="text-sm text-gray-600 hover:text-black transition-colors">Request Blood</Link>
-            )}
-
-            {/* Hospital specific links */}
-            {session?.user.role === 'hospital' && (
-              <Link href="/request" className="text-sm text-gray-600 hover:text-black transition-colors">Request Blood</Link>
-            )}
-
-            {/* Public links (only when not logged in) */}
-            {!session && (
-              <>
-                <Link href="/donate" className="text-sm text-gray-600 hover:text-black transition-colors">Donate Blood</Link>
-                <Link href="/join" className="text-sm text-gray-600 hover:text-black transition-colors">Join</Link>
-              </>
-            )}
-
-            {/* Support Us - hide for admin */}
-            {session?.user.role !== 'admin' && (
-              <Link href="/donate-money" className="text-sm font-medium text-red-600 hover:text-red-700 transition-colors">Support Us</Link>
-            )}
-
-            {/* Contact - hide for admin */}
-            {session?.user.role !== 'admin' && (
-              <Link href="/contact" className="text-sm text-gray-600 hover:text-black transition-colors">Contact</Link>
-            )}
+            {navLinks.map((link) => (
+              <Link 
+                key={link.name}
+                href={link.href} 
+                className={`text-sm transition-colors ${link.isSpecial ? 'font-medium text-red-600 hover:text-red-700' : 'text-gray-600 hover:text-black'}`}
+              >
+                {link.name}
+              </Link>
+            ))}
             
             {session ? (
               <div className="relative ml-4 pl-4 border-l border-gray-200">
@@ -124,48 +145,17 @@ export default function Navbar() {
             className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
           >
             <div className="px-4 pt-2 pb-6 space-y-2">
-              <Link href="/" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Home</Link>
-              <Link href="/about" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">About</Link>
-              <Link href="/camps" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Camps</Link>
-              <Link href="/leaderboard" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Leaderboard</Link>
-              <Link href="/education" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Learn</Link>
-              
-              {/* Donor specific links */}
-              {session?.user.role === 'donor' && (
-                <>
-                  <Link href="/donate" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Donate Blood</Link>
-                  <Link href="/eligibility" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Check Eligibility</Link>
-                </>
-              )}
+              {navLinks.map((link) => (
+                <Link
+                  key={link.name}
+                  href={link.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`block text-lg py-2 ${link.isSpecial ? 'font-medium text-red-600' : 'text-black'}`}
+                >
+                  {link.name}
+                </Link>
+              ))}
 
-              {/* Recipient specific links */}
-              {session?.user.role === 'recipient' && (
-                <Link href="/request" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Request Blood</Link>
-              )}
-
-              {/* Hospital specific links */}
-              {session?.user.role === 'hospital' && (
-                <Link href="/request" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Request Blood</Link>
-              )}
-
-              {/* Public links */}
-              {!session && (
-                <>
-                  <Link href="/donate" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Donate Blood</Link>
-                  <Link href="/join" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Join</Link>
-                </>
-              )}
-
-              {/* Support Us - hide for admin */}
-              {session?.user.role !== 'admin' && (
-                <Link href="/donate-money" onClick={() => setIsOpen(false)} className="block text-lg text-red-600 font-medium py-2">Support Us</Link>
-              )}
-
-              {/* Contact - hide for admin */}
-              {session?.user.role !== 'admin' && (
-                <Link href="/contact" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Contact</Link>
-              )}
-              
               {session ? (
                 <>
                   <Link 
