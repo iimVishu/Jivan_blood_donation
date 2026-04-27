@@ -124,58 +124,62 @@ export default function Navbar() {
             className="md:hidden bg-white border-b border-gray-100 overflow-hidden"
           >
             <div className="px-4 pt-2 pb-6 space-y-2">
-              <Link href="/" className="block text-lg text-black py-2">Home</Link>
-              <Link href="/about" className="block text-lg text-black py-2">About</Link>
-              <Link href="/camps" className="block text-lg text-black py-2">Camps</Link>
-              <Link href="/leaderboard" className="block text-lg text-black py-2">Leaderboard</Link>
-              <Link href="/education" className="block text-lg text-black py-2">Learn</Link>
+              <Link href="/" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Home</Link>
+              <Link href="/about" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">About</Link>
+              <Link href="/camps" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Camps</Link>
+              <Link href="/leaderboard" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Leaderboard</Link>
+              <Link href="/education" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Learn</Link>
               
               {/* Donor specific links */}
               {session?.user.role === 'donor' && (
                 <>
-                  <Link href="/donate" className="block text-lg text-black py-2">Donate Blood</Link>
-                  <Link href="/eligibility" className="block text-lg text-black py-2">Check Eligibility</Link>
+                  <Link href="/donate" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Donate Blood</Link>
+                  <Link href="/eligibility" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Check Eligibility</Link>
                 </>
               )}
 
               {/* Recipient specific links */}
               {session?.user.role === 'recipient' && (
-                <Link href="/request" className="block text-lg text-black py-2">Request Blood</Link>
+                <Link href="/request" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Request Blood</Link>
               )}
 
               {/* Hospital specific links */}
               {session?.user.role === 'hospital' && (
-                <Link href="/request" className="block text-lg text-black py-2">Request Blood</Link>
+                <Link href="/request" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Request Blood</Link>
               )}
 
               {/* Public links */}
               {!session && (
                 <>
-                  <Link href="/donate" className="block text-lg text-black py-2">Donate Blood</Link>
-                  <Link href="/join" className="block text-lg text-black py-2">Join</Link>
+                  <Link href="/donate" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Donate Blood</Link>
+                  <Link href="/join" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Join</Link>
                 </>
               )}
 
               {/* Support Us - hide for admin */}
               {session?.user.role !== 'admin' && (
-                <Link href="/donate-money" className="block text-lg text-red-600 font-medium py-2">Support Us</Link>
+                <Link href="/donate-money" onClick={() => setIsOpen(false)} className="block text-lg text-red-600 font-medium py-2">Support Us</Link>
               )}
 
               {/* Contact - hide for admin */}
               {session?.user.role !== 'admin' && (
-                <Link href="/contact" className="block text-lg text-black py-2">Contact</Link>
+                <Link href="/contact" onClick={() => setIsOpen(false)} className="block text-lg text-black py-2">Contact</Link>
               )}
               
               {session ? (
                 <>
                   <Link 
                     href={getDashboardLink()}
+                    onClick={() => setIsOpen(false)}
                     className="block text-lg text-black py-2 font-medium"
                   >
                     Dashboard
                   </Link>
                   <button
-                    onClick={() => signOut()}
+                    onClick={() => {
+                      setIsOpen(false);
+                      signOut();
+                    }}
                     className="w-full text-left block text-lg text-gray-500 py-2"
                   >
                     Logout
@@ -183,8 +187,8 @@ export default function Navbar() {
                 </>
               ) : (
                 <div className="pt-4 mt-4 border-t border-gray-100 flex flex-col space-y-3">
-                  <Link href="/login" className="block text-lg text-black">Login</Link>
-                  <Link href="/register" className="block text-lg text-black font-medium">Register</Link>
+                  <Link href="/login" onClick={() => setIsOpen(false)} className="block text-lg text-black">Login</Link>
+                  <Link href="/register" onClick={() => setIsOpen(false)} className="block text-lg text-black font-medium">Register</Link>
                 </div>
               )}
             </div>
