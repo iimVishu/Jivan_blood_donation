@@ -6,8 +6,9 @@ import dbConnect from '@/lib/db';
 import Request from '@/models/Request';
 import { sendCertificateEmail } from '@/lib/email';
 import { jsPDF } from 'jspdf';
+import QRCode from 'qrcode';
 
-async function generatePDFBuffer(donorName: string, patientName: string, date: string): Promise<Buffer> {
+async function generatePDFBuffer(donorName: string, patientName: string, date: string, requestId: string): Promise<Buffer> {
   const doc = new jsPDF({
     orientation: 'landscape',
     unit: 'pt',
@@ -97,6 +98,24 @@ async function generatePDFBuffer(donorName: string, patientName: string, date: s
   doc.setTextColor(107, 114, 128);
   doc.text('AUTHORIZED SIGNATURE', width - 150, 490, { align: 'center' });
 
+  // QR Code Generation & Addition
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const verifyUrl = `${baseUrl}/verify?id=${requestId}`;
+    const qrDataUrl = await QRCode.toDataURL(verifyUrl, { width: 100, margin: 1 });
+    
+    // Add QR code to top right corner
+    doc.addImage(qrDataUrl, 'PNG', width - 120, 50, 70, 70);
+    
+    // QR Code text / Verify label
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(107, 114, 128);
+    doc.text('Scan to Verify', width - 85, 125, { align: 'center' });
+  } catch (err) {
+    console.error('Failed to generate or add QR Code:', err);
+  }
+
   return Buffer.from(doc.output('arraybuffer'));
 }
 
@@ -150,7 +169,7 @@ export async function POST(
         day: 'numeric',
       });
 
-      const pdfBuffer = await generatePDFBuffer(donorName, bloodRequest.patientName, date);
+      const pdfBuffer = await generatePDFBuffer(donorName, bloodRequest.patientName, date, requestId);
       await sendCertificateEmail(donorEmail, donorName, date, bloodRequest.patientName, pdfBuffer);
 
       // Now that email succeeded, update the database
