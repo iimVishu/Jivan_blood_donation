@@ -55,19 +55,38 @@ export default function DonorDashboard() {
   const [pendingFeedbackAppointment, setPendingFeedbackAppointment] = useState<Appointment | null>(null);
 
   useEffect(() => {
+    // Helper to fetch with credentials and retry on 401 briefly.
+    const fetchWithRetry = async (url: string, opts: RequestInit = {}, attempt = 1): Promise<Response> => {
+      try {
+        const mergedOpts: RequestInit = { ...opts, credentials: 'include' };
+        const res = await fetch(url, mergedOpts);
+        if (res.status === 401 && attempt < 4) {
+          // small backoff to allow auth cookie to be available server-side
+          await new Promise(r => setTimeout(r, 250 * attempt));
+          return fetchWithRetry(url, opts, attempt + 1);
+        }
+        return res;
+      } catch (err) {
+        if (attempt < 4) {
+          await new Promise(r => setTimeout(r, 250 * attempt));
+          return fetchWithRetry(url, opts, attempt + 1);
+        }
+        throw err;
+      }
+    };
+
     const fetchAppointments = async () => {
       try {
-        const res = await fetch("/api/appointments", { cache: "no-store" });
+        const res = await fetchWithRetry("/api/appointments", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setAppointments(data);
-          
+
           // Check for completed donations without feedback
           const needsFeedback = data.find(
             (apt: Appointment) => apt.status === 'completed' && !apt.feedbackSubmitted
           );
           if (needsFeedback) {
-            // Check if dismissed in this session
             const isDismissed = sessionStorage.getItem(`feedbackDismissed_${needsFeedback._id}`);
             if (!isDismissed) {
               setPendingFeedbackAppointment(needsFeedback);
@@ -79,6 +98,8 @@ export default function DonorDashboard() {
               });
             }
           }
+        } else {
+          console.warn("Failed to fetch appointments, status:", res.status);
         }
       } catch (error) {
         console.error("Failed to fetch appointments", error);
@@ -87,10 +108,12 @@ export default function DonorDashboard() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch("/api/profile", { cache: "no-store" });
+        const res = await fetchWithRetry("/api/profile", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setProfile(data);
+        } else {
+          console.warn("Failed to fetch profile, status:", res.status);
         }
       } catch (error) {
         console.error("Failed to fetch profile", error);
