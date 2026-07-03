@@ -37,7 +37,7 @@ export default function HospitalDashboard() {
     const fetchData = async () => {
       try {
         // 1. Get Profile to find Hospital IDs
-        const profileRes = await fetch("/api/profile");
+        const profileRes = await fetch("/api/profile", { cache: "no-store" });
         if (!profileRes.ok) return;
         const profile = await profileRes.json();
 
@@ -49,7 +49,7 @@ export default function HospitalDashboard() {
         if (ids.length > 0) {
           // Fetch details for all linked banks
           const bankPromises = ids.map((id: string) => 
-            fetch(`/api/bloodbanks/${id}`).then(res => res.ok ? res.json() : null)
+            fetch(`/api/bloodbanks/${id}`, { cache: "no-store" }).then(res => res.ok ? res.json() : null)
           );
           
           const banks = (await Promise.all(bankPromises)).filter(b => b !== null);
@@ -68,7 +68,7 @@ export default function HospitalDashboard() {
         }
 
         // 3. Get Appointments
-        const aptRes = await fetch("/api/appointments");
+        const aptRes = await fetch("/api/appointments", { cache: "no-store" });
         if (aptRes.ok) {
           setAppointments(await aptRes.json());
         }

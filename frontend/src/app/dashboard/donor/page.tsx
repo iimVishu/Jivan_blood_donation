@@ -37,7 +37,7 @@ interface Appointment {
 }
 
 export default function DonorDashboard() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const certificateRef = useRef<HTMLDivElement>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [certificateDate, setCertificateDate] = useState("");
@@ -57,7 +57,7 @@ export default function DonorDashboard() {
   useEffect(() => {
     const fetchAppointments = async () => {
       try {
-        const res = await fetch("/api/appointments");
+        const res = await fetch("/api/appointments", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setAppointments(data);
@@ -87,7 +87,7 @@ export default function DonorDashboard() {
 
     const fetchProfile = async () => {
       try {
-        const res = await fetch("/api/profile");
+        const res = await fetch("/api/profile", { cache: "no-store" });
         if (res.ok) {
           const data = await res.json();
           setProfile(data);
@@ -97,16 +97,18 @@ export default function DonorDashboard() {
       }
     };
 
-    if (session) {
+    // Wait until NextAuth confirms the session is authenticated so
+    // appointments are fetched immediately after login.
+    if (status === 'authenticated' && session) {
       fetchAppointments();
       fetchProfile();
     }
-  }, [session]);
+  }, [status, session?.user?.id]);
 
   const handleFeedbackSuccess = async () => {
     // Refresh appointments to update feedbackSubmitted status
     try {
-      const res = await fetch("/api/appointments");
+      const res = await fetch("/api/appointments", { cache: "no-store" });
       if (res.ok) {
         const data = await res.json();
         setAppointments(data);
@@ -158,75 +160,6 @@ export default function DonorDashboard() {
     }, 100);
   };
 
-  const printCertificate = async (date: string) => {
-    setCertificateDate(new Date(date).toLocaleDateString());
-    setTimeout(async () => {
-      if (!certificateRef.current) return;
-      setIsGenerating(true);
-
-      try {
-        const canvas = await html2canvas(certificateRef.current, {
-          scale: 2,
-          logging: false,
-          useCORS: true,
-          backgroundColor: '#ffffff'
-        } as any);
-
-        const imgData = canvas.toDataURL('image/png');
-        const pdf = new jsPDF({
-          orientation: 'landscape',
-          unit: 'px',
-          format: [canvas.width, canvas.height]
-        });
-
-        pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height);
-
-        // Generate blob and open print dialog
-        const blob = pdf.output('blob');
-        const url = URL.createObjectURL(blob);
-
-        // Open a new window with an iframe to ensure printing works reliably
-        const printWindow = window.open('about:blank');
-        if (!printWindow) {
-          // Fallback: navigate to blob URL
-          window.location.href = url;
-          return;
-        }
-
-        printWindow.document.open();
-        printWindow.document.write(`<!doctype html><html><head><title>Print Certificate</title></head><body style="margin:0"><iframe src="${url}" frameborder="0" style="border:0;width:100%;height:100vh;" id="print-frame"></iframe></body></html>`);
-        printWindow.document.close();
-
-        const tryPrint = () => {
-          const iframe = printWindow.document.getElementById('print-frame') as HTMLIFrameElement | null;
-          if (!iframe) {
-            setTimeout(tryPrint, 200);
-            return;
-          }
-          iframe.onload = () => {
-            try {
-              iframe.contentWindow?.focus();
-              iframe.contentWindow?.print();
-              // Close window after a short delay
-              setTimeout(() => {
-                printWindow.close();
-                URL.revokeObjectURL(url);
-              }, 1000);
-            } catch (err) {
-              console.error('Print dialog failed:', err);
-            }
-          };
-        };
-
-        tryPrint();
-      } catch (error) {
-        console.error('Error printing certificate:', error);
-      } finally {
-        setIsGenerating(false);
-      }
-    }, 100);
-  };
-
   const getHealthInsight = async (apt: Appointment) => {
     if (!apt.healthStats) return;
     
@@ -254,7 +187,7 @@ export default function DonorDashboard() {
     }
   };
 
-  const upcomingAppointments = appointments.filter(a => new Date(a.date) > new Date() && a.status !== 'cancelled' && a.status !== 'completed');
+  const upcomingAppointments = appointments.filter(a => a.status !== 'cancelled' && a.status !== 'completed');
   const completedAppointments = appointments.filter(a => a.status === 'completed');
   const lastDonation = completedAppointments.length > 0 ? new Date(completedAppointments[completedAppointments.length - 1].date).toLocaleDateString() : "--";
 
@@ -445,29 +378,16 @@ export default function DonorDashboard() {
                                     Feedback Given
                                   </span>
                                 )}
-                                <div className="flex items-center space-x-2">
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => downloadCertificate(appointment.date)}
-                                    disabled={isGenerating}
-                                    className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 text-sm transition-colors whitespace-nowrap"
-                                  >
-                                    <Download className="h-4 w-4" />
-                                    <span>Download</span>
-                                  </motion.button>
-
-                                  <motion.button
-                                    whileHover={{ scale: 1.05 }}
-                                    whileTap={{ scale: 0.95 }}
-                                    onClick={() => printCertificate(appointment.date)}
-                                    disabled={isGenerating}
-                                    className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 text-sm transition-colors whitespace-nowrap"
-                                  >
-                                    <Download className="h-4 w-4" />
-                                    <span>Print</span>
-                                  </motion.button>
-                                </div>
+                                <motion.button
+                                  whileHover={{ scale: 1.05 }}
+                                  whileTap={{ scale: 0.95 }}
+                                  onClick={() => downloadCertificate(appointment.date)}
+                                  disabled={isGenerating}
+                                  className="flex items-center space-x-2 px-3 py-1.5 bg-white border border-gray-200 text-gray-700 rounded-md hover:bg-gray-50 text-sm transition-colors whitespace-nowrap"
+                                >
+                                  <Download className="h-4 w-4" />
+                                  <span>Certificate</span>
+                                </motion.button>
                               </div>
                             </div>
                             
