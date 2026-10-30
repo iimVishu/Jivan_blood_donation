@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Request from "@/models/Request";
+import { pickFields, errorResponse } from "@/lib/api-validation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req: Request) {
   try {
@@ -20,7 +21,7 @@ export async function GET(req: Request) {
     const parsedDays = Number(daysParam);
     const shouldApplyDateFilter = range !== "all" && Number.isFinite(parsedDays) && parsedDays > 0;
 
-    let query: any = {};
+    const query: any = {};
 
     if (userId) query.requester = userId;
     if (bloodGroup) query.bloodGroup = bloodGroup;
@@ -67,13 +68,15 @@ export async function POST(req: Request) {
     const body = await req.json();
 
     const newRequest = await Request.create({
-      ...body,
+      ...pickFields(body, ['patientName', 'bloodGroup', 'units', 'hospitalName', 'contactNumber', 'location', 'urgency']),
       requester: session.user.id,
+      status: 'pending',
     });
 
     return NextResponse.json(newRequest, { status: 201 });
   } catch (error) {
     console.error("Error creating request:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    const { message, status } = errorResponse(error);
+    return NextResponse.json({ message }, { status });
   }
 }

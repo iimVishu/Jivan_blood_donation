@@ -4,7 +4,7 @@ import dbConnect from '@/lib/db';
 import Reminder from '@/models/Reminder';
 import Appointment from '@/models/Appointment';
 import User from '@/models/User';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 import { sendEmail } from '@/lib/email';
 
 // Calculate next eligible donation date (56 days from last donation)
@@ -117,7 +117,7 @@ export async function POST(req: Request) {
     if (data.action === 'create_appointment_reminder') {
       const { appointmentId, reminderTime } = data;
       
-      const appointment = await Appointment.findById(appointmentId).populate('bloodBank');
+      const appointment = await Appointment.findOne({ _id: appointmentId, donor: session.user.id }).populate('bloodBank');
       if (!appointment) {
         return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
       }

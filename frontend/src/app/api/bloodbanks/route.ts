@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import BloodBank from "@/models/BloodBank";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req: Request) {
   try {
@@ -12,7 +12,7 @@ export async function GET(req: Request) {
     const lng = searchParams.get("lng");
     const radius = searchParams.get("radius") || 20000; // 20km default
 
-    let query: any = {};
+    const query: any = {};
 
     if (lat && lng) {
       query.location = {

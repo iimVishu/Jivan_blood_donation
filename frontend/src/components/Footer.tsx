@@ -27,25 +27,20 @@ export default function Footer() {
           </div>
           
           <div>
-            <h3 className="text-sm font-semibold mb-6 uppercase tracking-wider text-gray-900">Legal</h3>
+            <h3 className="text-sm font-semibold mb-6 uppercase tracking-wider text-gray-900">Help</h3>
             <ul className="space-y-4">
               <li><Link href="/faq" className="text-gray-600 hover:text-red-600 text-sm transition-colors">FAQ</Link></li>
-              <li><Link href="/privacy" className="text-gray-600 hover:text-red-600 text-sm transition-colors">Privacy</Link></li>
-              <li><Link href="/terms" className="text-gray-600 hover:text-red-600 text-sm transition-colors">Terms</Link></li>
+              <li><Link href="/contact" className="text-gray-600 hover:text-red-600 text-sm transition-colors">Contact Support</Link></li>
+              <li><Link href="/education" className="text-gray-600 hover:text-red-600 text-sm transition-colors">Education</Link></li>
             </ul>
           </div>
           
           <div>
             <h3 className="text-sm font-semibold mb-6 uppercase tracking-wider text-gray-900">Connect</h3>
             <ul className="space-y-4 text-gray-600 text-sm">
-              <li>hello@jeevan.in</li>
-              <li>+91 98765 43210</li>
+              <li><Link href="/contact" className="hover:text-red-600">Contact the Jeevan team</Link></li>
             </ul>
-            <div className="flex space-x-6 mt-8">
-              <a href="#" className="text-gray-400 hover:text-red-600 transition-colors"><Facebook className="h-5 w-5" /></a>
-              <a href="#" className="text-gray-400 hover:text-red-600 transition-colors"><Twitter className="h-5 w-5" /></a>
-              <a href="#" className="text-gray-400 hover:text-red-600 transition-colors"><Instagram className="h-5 w-5" /></a>
-            </div>
+
           </div>
         </div>
         

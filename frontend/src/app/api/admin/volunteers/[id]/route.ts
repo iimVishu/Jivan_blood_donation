@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Volunteer from "@/models/Volunteer";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
-import nodemailer from "nodemailer";
+import { authOptions } from "@/lib/auth";
+import { sendEmail, escapeHtml } from "@/lib/email";
+import { objectId, errorResponse } from "@/lib/api-validation";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -14,13 +15,14 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     await dbConnect();
     const { id } = await params;
+    objectId(id);
     const body = await req.json();
     const { status } = body;
 
     const updatedVolunteer = await Volunteer.findByIdAndUpdate(
       id,
       { status },
-      { new: true }
+      { new: true, runValidators: true }
     );
 
     if (!updatedVolunteer) {
@@ -29,23 +31,15 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 
     // Send email notification if status is approved or rejected
     if (status === 'approved' || status === 'rejected') {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS) {
+      if ((process.env.SMTP_USER || process.env.EMAIL_USER) && (process.env.SMTP_PASS || process.env.EMAIL_PASS)) {
         try {
-          const transporter = nodemailer.createTransport({
-            service: "gmail",
-            auth: {
-              user: process.env.EMAIL_USER,
-              pass: process.env.EMAIL_PASS,
-            },
-          });
-
           const subject = status === 'approved' 
             ? "Volunteer Application Approved - Jeevan Blood Donation"
             : "Update on your Volunteer Application - Jeevan Blood Donation";
           
           const html = status === 'approved'
             ? `
-              <h2>Congratulations ${updatedVolunteer.name}!</h2>
+              <h2>Congratulations ${escapeHtml(updatedVolunteer.name)}!</h2>
               <p>We are pleased to inform you that your application to join Jeevan Blood Donation as a volunteer has been <strong>APPROVED</strong>.</p>
               <p>We are excited to have you on board. Our team will contact you shortly with further details.</p>
               <p>Thank you for your commitment to saving lives!</p>
@@ -54,7 +48,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
               <p>The Jeevan Team</p>
             `
             : `
-              <h2>Hello ${updatedVolunteer.name},</h2>
+              <h2>Hello ${escapeHtml(updatedVolunteer.name)},</h2>
               <p>Thank you for your interest in volunteering with Jeevan Blood Donation.</p>
               <p>After careful review, we regret to inform you that we are unable to move forward with your application at this time.</p>
               <p>We appreciate your willingness to help and encourage you to apply again in the future.</p>
@@ -63,12 +57,7 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
               <p>The Jeevan Team</p>
             `;
 
-          await transporter.sendMail({
-            from: process.env.EMAIL_USER,
-            to: updatedVolunteer.email,
-            subject: subject,
-            html: html,
-          });
+          await sendEmail(updatedVolunteer.email, subject, html);
           console.log(`Email sent to ${updatedVolunteer.email} regarding ${status} status.`);
         } catch (emailError) {
           console.error("Error sending status email:", emailError);
@@ -94,6 +83,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
 
     await dbConnect();
     const { id } = await params;
+    objectId(id);
 
     const deletedVolunteer = await Volunteer.findByIdAndDelete(id);
 

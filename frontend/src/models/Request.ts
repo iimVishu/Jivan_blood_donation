@@ -8,7 +8,7 @@ const RequestSchema = new Schema({
     enum: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'],
     required: true
   },
-  units: { type: Number, required: true },
+  units: { type: Number, required: true, min: 1, validate: Number.isInteger },
   hospitalName: { type: String }, // Where the patient is admitted
   contactNumber: { type: String },
   location: {
@@ -29,6 +29,7 @@ const RequestSchema = new Schema({
   createdAt: { type: Date, default: Date.now },
 });
 
+RequestSchema.index({ location: '2dsphere' });
 const Request = (models.Request || model('Request', RequestSchema)) as mongoose.Model<any>;
 
 export default Request;

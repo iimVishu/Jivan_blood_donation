@@ -19,7 +19,7 @@ export default function DonateMoneyPage() {
   const router = useRouter();
 
   const handlePayment = async () => {
-    if (amount < 50) {
+    if (!Number.isFinite(amount) || amount < 50) {
       alert("Minimum donation amount is ₹50");
       return;
     }
@@ -36,34 +36,13 @@ export default function DonateMoneyPage() {
       const res = await fetch("/api/create-payment-intent", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ amount }),
+        body: JSON.stringify({ amount, email }),
       });
 
       const data = await res.json();
 
       if (!res.ok) {
         throw new Error(data.error || "Failed to create order");
-      }
-
-      // Handle Mock Mode
-      if (data.isMock) {
-        console.log("Processing Mock Payment...");
-        
-        // Send Thank You Email
-        await fetch("/api/donate-money/success", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            amount,
-            paymentId: data.orderId
-          }),
-        });
-
-        setTimeout(() => {
-          router.push("/donate-money/success");
-        }, 1500); // Simulate 1.5s delay
-        return;
       }
 
       // 2. Initialize Razorpay
@@ -74,22 +53,23 @@ export default function DonateMoneyPage() {
         name: "Jeevan Blood Donation",
         description: "Donation for a cause",
         order_id: data.orderId,
+        modal: { ondismiss: () => setLoading(false) },
         handler: async function (response: any) {
-          // Handle success
-          console.log("Payment Successful", response);
-          
-          // Send Thank You Email
-          await fetch("/api/donate-money/success", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              email,
-              amount,
-              paymentId: response.razorpay_payment_id
-            }),
-          });
-
-          router.push("/donate-money/success");
+          try {
+            const verification = await fetch('/api/donate-money/success', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ orderId: data.orderId, paymentId: response.razorpay_payment_id, signature: response.razorpay_signature }),
+            });
+            const result = await verification.json();
+            if (!verification.ok) throw new Error(result.error || 'Payment verification failed');
+            if (!result.emailSent) alert('Payment verified. The receipt email could not be delivered.');
+            router.push('/donate-money/success');
+          } catch (error) {
+            alert(error instanceof Error ? error.message : 'Could not verify payment. Keep your payment ID and contact support before retrying.');
+          } finally {
+            setLoading(false);
+          }
         },
         prefill: {
           email: email,
@@ -99,12 +79,13 @@ export default function DonateMoneyPage() {
         },
       };
 
+      if (!window.Razorpay) throw new Error('Payment checkout is still loading. Please try again.');
       const rzp1 = new window.Razorpay(options);
+      rzp1.on('payment.failed', () => setLoading(false));
       rzp1.open();
     } catch (error: any) {
       console.error("Payment Error:", error);
       alert(error.message || "Something went wrong. Please try again.");
-    } finally {
       setLoading(false);
     }
   };
@@ -201,7 +182,7 @@ export default function DonateMoneyPage() {
         </div>
 
         <div className="mt-8 text-center text-gray-500 text-sm">
-          <p>Secure payment processing by Razorpay. All donations are tax-deductible.</p>
+          <p>Secure payment processing by Razorpay. Thank you for supporting blood donation.</p>
         </div>
       </div>
     </div>

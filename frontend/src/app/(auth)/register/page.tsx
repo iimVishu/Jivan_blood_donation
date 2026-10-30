@@ -191,7 +191,6 @@ export default function RegisterPage() {
                   >
                     <option value="donor">Donor</option>
                     <option value="recipient">Recipient</option>
-                    <option value="hospital">Hospital</option>
                   </select>
                 </div>
                 {formData.role === 'donor' && (

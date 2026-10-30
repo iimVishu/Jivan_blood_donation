@@ -57,22 +57,10 @@
       "purpose": "maskable any"
     }
   ],
-  "categories": ["health", "medical", "lifestyle"],
-  "screenshots": [
-    {
-      "src": "/screenshots/home.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Home Page"
-    },
-    {
-      "src": "/screenshots/dashboard.png",
-      "sizes": "1280x720",
-      "type": "image/png",
-      "form_factor": "wide",
-      "label": "Donor Dashboard"
-    }
+  "categories": [
+    "health",
+    "medical",
+    "lifestyle"
   ],
   "shortcuts": [
     {
@@ -80,14 +68,24 @@
       "short_name": "Donate",
       "description": "Schedule a blood donation",
       "url": "/donate",
-      "icons": [{ "src": "/icons/donate-icon.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/donate-icon.png",
+          "sizes": "192x192"
+        }
+      ]
     },
     {
       "name": "Emergency SOS",
       "short_name": "SOS",
       "description": "Request emergency blood",
       "url": "/request",
-      "icons": [{ "src": "/icons/sos-icon.png", "sizes": "192x192" }]
+      "icons": [
+        {
+          "src": "/icons/sos-icon.png",
+          "sizes": "192x192"
+        }
+      ]
     }
   ],
   "related_applications": [],

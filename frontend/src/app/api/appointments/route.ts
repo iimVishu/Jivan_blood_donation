@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Appointment from "@/models/Appointment";
+import User from "@/models/User";
+import BloodBank from "@/models/BloodBank";
+import { objectId, errorResponse } from "@/lib/api-validation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
+import { sendDiscordAppointmentUpdate } from "@/lib/discord";
 
 export const dynamic = 'force-dynamic';
 
@@ -35,6 +39,8 @@ export async function GET(req: Request) {
         // If hospital user is not linked to a blood bank, return empty or handle error
         return NextResponse.json([]);
       }
+    } else if (session.user.role !== 'admin') {
+      return NextResponse.json({ message: 'Forbidden' }, { status: 403 });
     }
 
     if (shouldApplyDateFilter) {
@@ -70,6 +76,9 @@ export async function POST(req: Request) {
     if (!session) {
       return NextResponse.json({ message: "Unauthorized" }, { status: 401 });
     }
+    if (session.user.role !== 'donor') {
+      return NextResponse.json({ message: 'Only donors can book appointments' }, { status: 403 });
+    }
 
     await dbConnect();
     const body = await req.json();
@@ -81,6 +90,17 @@ export async function POST(req: Request) {
         { status: 400 }
       );
     }
+    objectId(bloodBank);
+    const appointmentDate = new Date(date);
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    if (!Number.isFinite(appointmentDate.getTime()) || appointmentDate < today || typeof time !== 'string' || !time.trim()) {
+      return NextResponse.json({ message: 'Choose a valid upcoming date and time' }, { status: 400 });
+    }
+    const bank = await BloodBank.findById(bloodBank);
+    if (!bank || bank.status === 'Inactive') {
+      return NextResponse.json({ message: 'Blood bank is unavailable' }, { status: 400 });
+    }
 
     const newAppointment = await Appointment.create({
       donor: session.user.id,
@@ -91,9 +111,31 @@ export async function POST(req: Request) {
       status: 'pending'
     });
 
+    try {
+      const User = (await import("@/models/User")).default;
+      const BloodBank = (await import("@/models/BloodBank")).default;
+      const donor = await User.findById(session.user.id).select("name bloodGroup");
+      const bank = await BloodBank.findById(bloodBank).select("name");
+
+      await sendDiscordAppointmentUpdate({
+        title: "New appointment request",
+        appointmentId: newAppointment._id.toString(),
+        description: "A new blood donation appointment is waiting for admin approval.",
+        donorName: donor?.name || "Unknown donor",
+        bloodGroup: donor?.bloodGroup || "Not provided",
+        appointmentDate: new Date(date),
+        appointmentTime: time,
+        bloodBankName: bank?.name || "Blood Bank",
+        status: "pending",
+      });
+    } catch (discordError) {
+      console.error("Discord notification failed for new appointment:", discordError);
+    }
+
     return NextResponse.json(newAppointment, { status: 201 });
   } catch (error) {
     console.error("Error creating appointment:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    const { message, status } = errorResponse(error);
+    return NextResponse.json({ message }, { status });
   }
 }

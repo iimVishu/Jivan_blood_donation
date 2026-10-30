@@ -2,13 +2,15 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Request from "@/models/Request";
 import AuditLog from "@/models/AuditLog";
+import { ApiError, objectId, pickFields, errorResponse } from "@/lib/api-validation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     await dbConnect();
     const { id } = await params;
+    objectId(id);
     const request = await Request.findById(id).populate("requester", "name email phone");
     
     if (!request) {
@@ -31,11 +33,23 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     await dbConnect();
     const body = await req.json();
     const { id } = await params;
+    objectId(id);
 
     const existingReq = await Request.findById(id);
     if (!existingReq) {
       return NextResponse.json({ message: "Request not found" }, { status: 404 });
     }
+    const staff = ['admin', 'hospital'].includes(session.user.role);
+    if (!staff && existingReq.requester.toString() !== session.user.id) {
+      throw new ApiError('Forbidden', 403);
+    }
+    if (!staff && existingReq.status !== 'pending') {
+      throw new ApiError('Only pending requests can be edited', 409);
+    }
+    if (!staff && body.status !== undefined && body.status !== existingReq.status) {
+      throw new ApiError('Only staff can change request status', 403);
+    }
+    const update = pickFields(body, ['patientName', 'bloodGroup', 'units', 'hospitalName', 'contactNumber', 'location', 'urgency', ...(staff ? ['status'] : [])]);
 
     // Role-based access control for request status changes
     const statusChanges = ['approved', 'rejected', 'fulfilled'];
@@ -53,8 +67,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     
     const updatedRequest = await Request.findByIdAndUpdate(
       id,
-      { ...body },
-      { new: true }
+      { $set: update },
+      { new: true, runValidators: true }
     );
 
     // Create Audit Log if status changed
@@ -77,7 +91,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     return NextResponse.json(updatedRequest);
   } catch (error) {
     console.error("PUT Request error:", error);
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    const { message, status } = errorResponse(error);
+    return NextResponse.json({ message }, { status });
   }
 }
 

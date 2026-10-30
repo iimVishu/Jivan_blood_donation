@@ -1,0 +1,15 @@
+name: Jeevan security analysis
+
+queries:
+  - uses: security-extended
+
+paths:
+  - frontend/src
+  - backend
+  - scripts
+  - .github
+
+paths-ignore:
+  - '**/node_modules/**'
+  - '**/.next/**'
+  - '**/.npm-cache/**'

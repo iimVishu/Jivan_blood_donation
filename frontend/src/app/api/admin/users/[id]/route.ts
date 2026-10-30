@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import { SAFE_USER_FIELDS } from "@/lib/api-validation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
@@ -55,8 +56,8 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const updatedUser = await User.findByIdAndUpdate(
       id,
       { $set: updateData },
-      { new: true }
-    ).select("-password");
+      { new: true, runValidators: true }
+    ).select(SAFE_USER_FIELDS);
 
     if (!updatedUser) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });

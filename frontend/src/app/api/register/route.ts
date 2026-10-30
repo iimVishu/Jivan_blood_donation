@@ -2,12 +2,23 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
+import { randomInt } from "node:crypto";
+import { sendEmail } from "@/lib/email";
+import { BLOOD_GROUPS, errorResponse } from "@/lib/api-validation";
 
 export async function POST(req: Request) {
   try {
     const { name, email: rawEmail, password, role, bloodGroup, phone, address } = await req.json();
-    const email = rawEmail.toLowerCase();
+    if (typeof name !== 'string' || !name.trim() || typeof rawEmail !== 'string' || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(rawEmail.trim()) || typeof password !== 'string' || password.length < 6 || Buffer.byteLength(password, 'utf8') > 72) {
+      return NextResponse.json({ message: 'Enter a name, valid email and password of 6 to 72 bytes' }, { status: 400 });
+    }
+    if (role && !['donor', 'recipient'].includes(role)) {
+      return NextResponse.json({ message: 'Staff accounts must be assigned by an administrator' }, { status: 403 });
+    }
+    if (bloodGroup && !BLOOD_GROUPS.includes(bloodGroup)) {
+      return NextResponse.json({ message: 'Invalid blood group' }, { status: 400 });
+    }
+    const email = rawEmail.trim().toLowerCase();
 
     await dbConnect();
 
@@ -23,13 +34,8 @@ export async function POST(req: Request) {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = randomInt(100000, 1000000).toString();
     const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-
-    // ALWAYS Log OTP to console for easier local testing
-    console.log("\n==================================================");
-    console.log(`🔐 DEVELOPMENT OTP for ${email}: ${otp}`);
-    console.log("==================================================\n");
 
     if (existingUser && !existingUser.isVerified) {
       // Update existing unverified user
@@ -60,34 +66,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // Send OTP Email
-    try {
-      if (process.env.EMAIL_USER && process.env.EMAIL_PASS && !process.env.EMAIL_USER.includes('your-gmail')) {
-        const transporter = nodemailer.createTransport({
-          service: "gmail",
-          auth: {
-            user: process.env.EMAIL_USER,
-            pass: process.env.EMAIL_PASS,
-          },
-        });
-
-        await transporter.sendMail({
-          from: process.env.EMAIL_USER,
-          to: email,
-          subject: "Verify your email - Blood Donation System",
-          html: `
-            <h1>Email Verification</h1>
-            <p>Your OTP for registration is: <strong>${otp}</strong></p>
-            <p>This OTP is valid for 10 minutes.</p>
-          `,
-        });
-      } else {
-        console.log("⚠️ Email credentials not configured. Check terminal for OTP.");
-      }
-    } catch (emailError) {
-      console.error("Failed to send email:", emailError);
-      // Continue execution so user can still verify using console OTP
-    }
+    await sendEmail(email, "Verify your email - Jeevan", `<h1>Email Verification</h1><p>Your registration OTP is <strong>${otp}</strong>. It expires in 10 minutes.</p>`);
 
     return NextResponse.json(
       { message: "OTP sent to email", email },
@@ -96,8 +75,8 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error("Registration error:", error);
     return NextResponse.json(
-      { message: error.message || "Internal server error" },
-      { status: 500 }
+      { message: errorResponse(error).message },
+      { status: errorResponse(error).status }
     );
   }
 }

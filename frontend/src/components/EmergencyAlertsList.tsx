@@ -11,7 +11,7 @@ interface Alert {
     name: string;
     email: string;
     phone: string;
-    bloodType: string;
+    bloodGroup: string;
   };
   location: {
     lat: number;
@@ -147,7 +147,7 @@ export default function EmergencyAlertsList() {
                     <User className="h-4 w-4 text-gray-400 mt-0.5" />
                     <div>
                       <p className="text-sm font-medium text-gray-900">{alert.user.name}</p>
-                      <p className="text-xs text-gray-500">Blood Type: <span className="font-bold text-red-600">{alert.user.bloodType}</span></p>
+                      <p className="text-xs text-gray-500">Blood Type: <span className="font-bold text-red-600">{alert.user.bloodGroup}</span></p>
                     </div>
                   </div>
                 )}
@@ -179,8 +179,8 @@ export default function EmergencyAlertsList() {
               {/* Share Button */}
               <div className="mb-4">
                 <ShareButtons 
-                  title={`URGENT: ${alert.user?.bloodType || 'Blood'} needed!`}
-                  text={`Emergency blood request for ${alert.user?.name || 'a patient'}. Blood type: ${alert.user?.bloodType || 'Unknown'}. Contact: ${alert.contactNumber || alert.user?.phone || 'N/A'}`}
+                  title={`URGENT: ${alert.user?.bloodGroup || 'Blood'} needed!`}
+                  text={`Emergency blood request for ${alert.user?.name || 'a patient'}. Blood type: ${alert.user?.bloodGroup || 'Unknown'}. Contact: ${alert.contactNumber || alert.user?.phone || 'N/A'}`}
                   compact
                 />
               </div>

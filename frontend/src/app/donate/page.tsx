@@ -35,25 +35,7 @@ export default function DonatePage() {
       try {
         const res = await fetch("/api/bloodbanks");
         if (res.ok) {
-          let data = await res.json();
-          
-          // Auto-seed if empty (for demo purposes)
-          if (Array.isArray(data) && data.length === 0) {
-            console.log("No blood banks found, attempting to seed...");
-            try {
-              const seedRes = await fetch("/api/seed");
-              if (seedRes.ok) {
-                 // Fetch again after seeding
-                 const res2 = await fetch("/api/bloodbanks");
-                 if (res2.ok) {
-                   data = await res2.json();
-                 }
-              }
-            } catch (seedError) {
-              console.error("Auto-seed failed", seedError);
-            }
-          }
-          
+          const data = await res.json();
           setBloodBanks(data);
         } else {
             console.error("Failed to fetch blood banks: Status", res.status);

@@ -5,6 +5,12 @@ import User from "@/models/User";
 import bcrypt from "bcryptjs";
 
 export async function GET() {
+  if (process.env.NODE_ENV !== 'development' || process.env.ENABLE_DEV_SEED !== 'true') {
+    return NextResponse.json({ message: 'Not found' }, { status: 404 });
+  }
+  if (!process.env.SEED_ADMIN_EMAIL || !process.env.SEED_ADMIN_PASSWORD || process.env.SEED_ADMIN_PASSWORD.length < 12) {
+    return NextResponse.json({ message: 'Configure SEED_ADMIN_EMAIL and a SEED_ADMIN_PASSWORD of at least 12 characters' }, { status: 400 });
+  }
   try {
     await dbConnect();
     
@@ -74,22 +80,23 @@ export async function GET() {
     }
 
     // Seed Admin User
-    const adminExists = await User.findOne({ email: "admin@example.com" });
+    const adminExists = await User.findOne({ email: process.env.SEED_ADMIN_EMAIL.trim().toLowerCase() });
     let adminMessage = "Admin user already exists";
 
     if (!adminExists) {
-      const hashedPassword = await bcrypt.hash("admin123", 10);
+      const hashedPassword = await bcrypt.hash(process.env.SEED_ADMIN_PASSWORD, 10);
       await User.create({
         name: "System Admin",
-        email: "admin@example.com",
+        email: process.env.SEED_ADMIN_EMAIL.trim().toLowerCase(),
         password: hashedPassword,
         role: "admin",
+        location: { type: 'Point', coordinates: [0, 0] },
         bloodGroup: "O+", // Admins can be donors too
         address: "System HQ",
         phone: "000-000-0000",
         isVerified: true
       });
-      adminMessage = "Created admin user (admin@example.com / admin123)";
+      adminMessage = "Created configured admin user";
     }
 
     return NextResponse.json({ 

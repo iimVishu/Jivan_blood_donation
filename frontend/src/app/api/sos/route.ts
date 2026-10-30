@@ -3,10 +3,11 @@ import { getServerSession } from 'next-auth';
 import dbConnect from '@/lib/db';
 import EmergencyAlert from '@/models/EmergencyAlert';
 import User from '@/models/User';
+import { authOptions } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession();
+    const session = await getServerSession(authOptions);
     await dbConnect();
 
     const data = await req.json();
@@ -41,7 +42,7 @@ export async function GET(req: Request) {
     // Populate user details if available
     const alerts = await EmergencyAlert.find({ status: 'active' })
       .sort({ createdAt: -1 })
-      .populate('user', 'name email phone bloodType');
+      .populate('user', 'name bloodGroup');
 
     return NextResponse.json(alerts);
   } catch (error) {

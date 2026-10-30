@@ -122,7 +122,7 @@ export default function DonorDashboard() {
 
     // Wait until NextAuth confirms the session is authenticated so
     // appointments are fetched immediately after login.
-    if (status === 'authenticated' && session) {
+    if (status === 'authenticated' && session?.user?.id) {
       fetchAppointments();
       fetchProfile();
     }

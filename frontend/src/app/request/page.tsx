@@ -6,6 +6,7 @@ import { useSession } from "next-auth/react";
 
 export default function RequestPage() {
   const router = useRouter();
+  const emergencyPhone = process.env.NEXT_PUBLIC_EMERGENCY_PHONE;
   const { data: session } = useSession();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({
@@ -67,12 +68,12 @@ export default function RequestPage() {
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-12">
           <h1 className="text-3xl font-bold text-gray-900">Request Blood</h1>
-          <p className="mt-4 text-gray-600">Submit a request for blood units. In case of emergency, please call our helpline directly.</p>
-          <div className="mt-4">
-             <a href="tel:1234567890" className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
-               Emergency Helpline: 123-456-7890
+          <p className="mt-4 text-gray-600">Submit a request for blood units. For urgent help, contact your hospital directly.</p>
+          {emergencyPhone && <div className="mt-4">
+             <a href={`tel:${emergencyPhone}`} className="inline-flex items-center px-4 py-2 border border-transparent text-base font-medium rounded-md text-white bg-red-600 hover:bg-red-700">
+               Emergency contact: {emergencyPhone}
              </a>
-          </div>
+          </div>}
         </div>
 
         <div className="bg-white shadow sm:rounded-lg">
