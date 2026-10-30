@@ -15,14 +15,14 @@ const BloodBankSchema = new Schema({
     coordinates: [Number], // [longitude, latitude]
   },
   stock: {
-    'A+': { type: Number, default: 0 },
-    'A-': { type: Number, default: 0 },
-    'B+': { type: Number, default: 0 },
-    'B-': { type: Number, default: 0 },
-    'AB+': { type: Number, default: 0 },
-    'AB-': { type: Number, default: 0 },
-    'O+': { type: Number, default: 0 },
-    'O-': { type: Number, default: 0 },
+    'A+': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'A-': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'B+': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'B-': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'AB+': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'AB-': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'O+': { type: Number, default: 0, min: 0, validate: Number.isInteger },
+    'O-': { type: Number, default: 0, min: 0, validate: Number.isInteger },
   },
   admins: [{ type: Schema.Types.ObjectId, ref: 'User' }], // Users who manage this bank
   status: {

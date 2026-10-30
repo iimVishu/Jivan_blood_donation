@@ -40,8 +40,6 @@ export const viewport: Viewport = {
   themeColor: "#dc2626",
   width: "device-width",
   initialScale: 1,
-  maximumScale: 1,
-  userScalable: false,
 };
 
 export default function RootLayout({
@@ -71,7 +69,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{
             __html: `
               if ('serviceWorker' in navigator) {
-                window.addEventListener('load', function() {
+                const registerServiceWorker = function() {
                   navigator.serviceWorker.register('/sw.js').then(
                     function(registration) {
                       console.log('ServiceWorker registration successful');
@@ -80,7 +78,9 @@ export default function RootLayout({
                       console.log('ServiceWorker registration failed: ', err);
                     }
                   );
-                });
+                };
+                if (document.readyState === 'complete') registerServiceWorker();
+                else window.addEventListener('load', registerServiceWorker, { once: true });
               }
             `,
           }}

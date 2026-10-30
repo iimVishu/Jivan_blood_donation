@@ -36,7 +36,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     // Connect to external NodeJS Socket server
-    const backendUrl = process.env.NEXT_PUBLIC_SOCKET_URL || "http://localhost:5000";
+    const backendUrl = process.env.NEXT_PUBLIC_SOCKET_URL;
+    if (!backendUrl) return;
+    const timers = new Set<ReturnType<typeof setTimeout>>();
     const newSocket = io(backendUrl, {
       reconnectionAttempts: 5,
       reconnectionDelay: 3000,
@@ -61,12 +63,15 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       setNotifications((prev) => [newNotif, ...prev].slice(0, 5)); // Keep last 5
 
       // Auto dismiss after 6 seconds
-      setTimeout(() => {
-        dismissNotification(newNotif.id);
+      const timer = setTimeout(() => {
+        setNotifications((prev) => prev.filter((n) => n.id !== newNotif.id));
+        timers.delete(timer);
       }, 6000);
+      timers.add(timer);
     });
 
     return () => {
+      timers.forEach(clearTimeout);
       newSocket.disconnect();
     };
   }, [session?.user?.role]);

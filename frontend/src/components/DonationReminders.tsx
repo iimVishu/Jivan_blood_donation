@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Bell, BellOff, Calendar, Clock, Check, X, AlertCircle, Droplet } from 'lucide-react';
 
@@ -31,11 +31,7 @@ export default function DonationReminders() {
     postDonationCare: true,
   });
 
-  useEffect(() => {
-    fetchReminders();
-  }, []);
-
-  const fetchReminders = async () => {
+  const fetchReminders = useCallback(async () => {
     try {
       const res = await fetch('/api/reminders');
       if (res.ok) {
@@ -48,7 +44,13 @@ export default function DonationReminders() {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchReminders();
+  }, [fetchReminders]);
+
+
 
   const setupDonationReminder = async () => {
     try {

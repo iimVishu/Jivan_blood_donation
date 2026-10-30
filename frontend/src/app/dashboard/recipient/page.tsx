@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { motion } from "framer-motion";
 
@@ -20,6 +20,7 @@ interface Request {
 export default function RecipientDashboard() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const userId = session?.user?.id;
   const [requests, setRequests] = useState<Request[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -67,6 +68,20 @@ export default function RecipientDashboard() {
     }
   };
 
+  const fetchRequests = useCallback(async () => {
+    try {
+      const res = await fetch(`/api/requests?userId=${userId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setRequests(data);
+      }
+    } catch (error) {
+      console.error("Error fetching requests:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [userId]);
+
   useEffect(() => {
     if (status === "loading") return;
     if (!session) {
@@ -79,21 +94,7 @@ export default function RecipientDashboard() {
     }
 
     fetchRequests();
-  }, [session, status, router]);
-
-  const fetchRequests = async () => {
-    try {
-      const res = await fetch(`/api/requests?userId=${session?.user.id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setRequests(data);
-      }
-    } catch (error) {
-      console.error("Error fetching requests:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  }, [session, status, router, fetchRequests]);
 
   if (status === "loading" || loading) {
     return (

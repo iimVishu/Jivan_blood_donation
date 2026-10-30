@@ -1,9 +1,21 @@
 {
   "devDependencies": {
-    "puppeteer": "^24.39.0"
+    "puppeteer": "^25.16.0"
   },
   "dependencies": {
     "@types/qrcode": "^1.5.6",
     "qrcode": "^1.5.4"
+  },
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "start": "npm --prefix frontend run start",
+    "lint": "npm --prefix frontend run lint",
+    "typecheck": "npm --prefix frontend run typecheck",
+    "test": "npm --prefix frontend test && npm --prefix backend test",
+    "check": "npm run lint && npm run typecheck && npm test",
+    "dev:backend": "npm --prefix backend run dev",
+    "test:backend": "npm --prefix backend test",
+    "test:browser": "node scripts/browser-smoke.mjs"
   }
 }

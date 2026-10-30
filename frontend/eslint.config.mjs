@@ -12,8 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    ".npm-cache/**",
   ]),
   {
+    files: ["**/*.{js,jsx,mjs,ts,tsx}"],
     rules: {
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
@@ -23,6 +25,10 @@ const eslintConfig = defineConfig([
       "@next/next/no-img-element": "off",
       "prefer-const": "warn"
     }
+  },
+  {
+    files: ["tests/**/*.cjs"],
+    rules: { "@typescript-eslint/no-require-imports": "off" }
   }
 ]);
 

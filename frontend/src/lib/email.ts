@@ -1,25 +1,29 @@
 import nodemailer from 'nodemailer';
 
+const smtpUser = process.env.SMTP_USER || process.env.EMAIL_USER;
+const smtpPass = process.env.SMTP_PASS || process.env.EMAIL_PASS;
+
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT || '587'),
-  secure: process.env.SMTP_SECURE === 'true',
+  secure: process.env.SMTP_SECURE === 'true' || (!process.env.SMTP_SECURE && process.env.SMTP_PORT === '465'),
+  connectionTimeout: 10000,
+  greetingTimeout: 10000,
+  socketTimeout: 15000,
   auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
+    user: smtpUser,
+    pass: smtpPass,
   },
 });
 
 export const sendEmail = async (to: string, subject: string, html: string, attachments?: { filename: string, content: Buffer }[]) => {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
-      console.warn('SMTP credentials not found. Email not sent.');
-      console.log('Email details:', { to, subject, html });
-      return;
+    if (!smtpUser || !smtpPass) {
+      throw new Error('SMTP credentials are required to send email');
     }
 
     const info = await transporter.sendMail({
-      from: process.env.SMTP_FROM || '"Jeevan Blood Donation" <noreply@jeevan.com>',
+      from: process.env.SMTP_FROM || smtpUser,
       to,
       subject,
       html,
@@ -36,7 +40,7 @@ export const sendEmail = async (to: string, subject: string, html: string, attac
 
 export const verifySmtpConnection = async () => {
   try {
-    if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
+    if (!smtpUser || !smtpPass) {
       return { success: false, error: 'SMTP credentials missing in environment variables' };
     }
     await transporter.verify();
@@ -45,6 +49,8 @@ export const verifySmtpConnection = async () => {
     return { success: false, error: error.message };
   }
 };
+
+export const escapeHtml = (value: unknown) => String(value ?? '').replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]!));
 
 const buildEmailTemplate = (title: string, content: string, headerColor: string = '#dc2626') => `
 <!DOCTYPE html>

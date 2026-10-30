@@ -4,7 +4,7 @@ import dbConnect from '@/lib/db';
 import Badge, { BadgeInfo } from '@/models/Badge';
 import Appointment from '@/models/Appointment';
 import User from '@/models/User';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
+import { authOptions } from '@/lib/auth';
 
 // Check and award badges based on user activity
 async function checkAndAwardBadges(userId: string) {
@@ -42,7 +42,7 @@ async function checkAndAwardBadges(userId: string) {
 
   // Rare blood type badge
   const rareBloodTypes = ['AB-', 'B-', 'O-'];
-  if (rareBloodTypes.includes(user.bloodType) && completedDonations >= 1) {
+  if (rareBloodTypes.includes(user.bloodGroup) && completedDonations >= 1) {
     const existing = await Badge.findOne({ userId, badgeType: 'rare_blood_hero' });
     if (!existing) {
       await Badge.create({ userId, badgeType: 'rare_blood_hero' });

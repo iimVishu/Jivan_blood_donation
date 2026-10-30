@@ -52,7 +52,6 @@ const Certificate = forwardRef<HTMLDivElement, CertificateProps>(({ donorName, d
       {/* QR Code Positioned Absolute Bottom Right */}
       {qrCodeUrl && (
         <div className="absolute bottom-8 right-8 flex flex-col items-center">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
           <img 
             src={qrCodeUrl} 
             alt="Verification QR Code" 

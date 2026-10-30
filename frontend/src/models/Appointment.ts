@@ -4,9 +4,10 @@ const AppointmentSchema = new Schema({
   donor: { type: Schema.Types.ObjectId, ref: 'User', required: true },
   bloodBank: { type: Schema.Types.ObjectId, ref: 'BloodBank', required: true },
   date: { type: Date, required: true },
+  timeSlot: { type: String },
   status: { 
     type: String, 
-    enum: ['pending', 'confirmed', 'completed', 'cancelled'], 
+    enum: ['pending', 'confirmed', 'completed', 'cancelled', 'rejected'],
     default: 'pending' 
   },
   trackingStatus: {

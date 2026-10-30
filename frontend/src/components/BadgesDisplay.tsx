@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Award, Lock, Sparkles, X } from 'lucide-react';
 
@@ -28,11 +28,7 @@ export default function BadgesDisplay({ userId, showAll = false, compact = false
   const [showNewBadgeModal, setShowNewBadgeModal] = useState(false);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchBadges();
-  }, [userId]);
-
-  const fetchBadges = async () => {
+  const fetchBadges = useCallback(async () => {
     try {
       const url = userId ? `/api/badges?userId=${userId}` : '/api/badges';
       const res = await fetch(url);
@@ -51,7 +47,11 @@ export default function BadgesDisplay({ userId, showAll = false, compact = false
     } finally {
       setLoading(false);
     }
-  };
+  }, [userId]);
+
+  useEffect(() => {
+    fetchBadges();
+  }, [fetchBadges]);
 
   const earnedBadges = badges.filter(b => b.earned);
   const lockedBadges = badges.filter(b => !b.earned);

@@ -5,23 +5,23 @@ import User from "@/models/User";
 export async function POST(req: Request) {
   try {
     const { email: rawEmail, otp } = await req.json();
-    const email = rawEmail.toLowerCase();
+    if (typeof rawEmail !== "string" || typeof otp !== "string" || !/^\d{6}$/.test(otp)) {
+      return NextResponse.json({ message: "Valid email and six-digit OTP required" }, { status: 400 });
+    }
+    const email = rawEmail.trim().toLowerCase();
 
     await dbConnect();
 
-    console.log(`Verifying OTP for ${email}. Received OTP: ${otp}`);
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      console.log("User not found during verification");
       return NextResponse.json(
         { message: "User not found" },
         { status: 404 }
       );
     }
 
-    console.log(`User found: ${user.email}, stored OTP: ${user.otp}`);
 
     if (user.isVerified) {
       return NextResponse.json(
@@ -30,15 +30,14 @@ export async function POST(req: Request) {
       );
     }
 
-    if (String(user.otp) !== String(otp)) {
-      console.log(`OTP mismatch. Expected: ${user.otp}, Received: ${otp}`);
+    if (!user.otp || user.otp !== otp) {
       return NextResponse.json(
         { message: "Invalid OTP" },
         { status: 400 }
       );
     }
 
-    if (user.otpExpiry && new Date(user.otpExpiry) < new Date()) {
+    if (!user.otpExpiry || new Date(user.otpExpiry) <= new Date()) {
       return NextResponse.json(
         { message: "OTP expired" },
         { status: 400 }

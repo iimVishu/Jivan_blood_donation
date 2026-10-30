@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Camp from "@/models/Camp";
+import { pickFields } from "@/lib/api-validation";
 
 export async function POST(req: Request) {
   try {
@@ -15,7 +16,10 @@ export async function POST(req: Request) {
       }
     }
 
-    const newCamp = await Camp.create(body);
+    const newCamp = await Camp.create({
+      ...pickFields(body, [...requiredFields, 'message']),
+      status: 'pending',
+    });
 
     return NextResponse.json(newCamp, { status: 201 });
   } catch (error) {

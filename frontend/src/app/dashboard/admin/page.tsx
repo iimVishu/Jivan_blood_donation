@@ -3,7 +3,7 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { Users, Droplet, Activity, AlertCircle, Plus, MapPin, Calendar, Check, X, Trash2, AlertTriangle, Siren, Megaphone, MessageSquare, Star, Download } from "lucide-react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import EmergencyAlertsList from "@/components/EmergencyAlertsList";
 import AdvancedAnalytics from "@/components/AdvancedAnalytics";
 import LocationPicker from "@/components/LocationPicker";
@@ -51,6 +51,7 @@ const exportToCSV = (data: any[], filename: string) => {
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  window.URL.revokeObjectURL(url);
 };
 
 export default function AdminDashboard() {
@@ -86,14 +87,14 @@ export default function AdminDashboard() {
     return new Date(a.date).getTime() - new Date(b.date).getTime();
   });
 
-  const filteredRequests = requests.filter(r => r.status === requestTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
-  const filteredCamps = camps.filter(c => c.status === campTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
-  const filteredVolunteers = volunteers.filter(v => v.status === volunteerTab).sort((a, b) => new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime());
+  const filteredRequests = requests.filter(r => r.status === requestTab).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const filteredCamps = camps.filter(c => c.status === campTab).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  const filteredVolunteers = volunteers.filter(v => v.status === volunteerTab).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
   const filteredUsers = users
     .filter((user) => userRoleTab === 'all' || user.role === userRoleTab)
     .sort((a, b) => {
       // Keep newest registrations first for easier admin review.
-      return new Date(b.createdAt || Date.now()).getTime() - new Date(a.createdAt || Date.now()).getTime();
+      return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
     });
 
   // Disaster Mode State
@@ -122,6 +123,69 @@ export default function AdminDashboard() {
     location: { type: "Point", coordinates: [0, 0] }
   });
 
+  const fetchAppointments = useCallback(async () => {
+    const res = await fetch(`/api/appointments?${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setAppointments(await res.json());
+  }, [dataRange]);
+
+  const fetchRequests = useCallback(async () => {
+    const res = await fetch(`/api/requests?${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setRequests(await res.json());
+  }, [dataRange]);
+
+  const fetchCamps = useCallback(async () => {
+    const res = await fetch(`/api/camps?${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setCamps(await res.json());
+  }, [dataRange]);
+
+  const fetchVolunteers = useCallback(async () => {
+    const res = await fetch(`/api/admin/volunteers?${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setVolunteers(await res.json());
+  }, [dataRange]);
+
+  const fetchFeedbacks = useCallback(async () => {
+    const res = await fetch(`/api/feedback?all=true&${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setFeedbacks(await res.json());
+  }, [dataRange]);
+
+  const fetchAuditLogs = useCallback(async () => {
+    const res = await fetch(`/api/admin/audit-logs?${dataRange === '30d' ? 'days=30' : 'range=all'}`);
+    if (res.ok) setAuditLogs(await res.json());
+  }, [dataRange]);
+
+  const fetchStats = useCallback(async () => {
+    try {
+      const res = await fetch("/api/admin/stats");
+      if (res.ok) setStats(await res.json());
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const fetchDisasterStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/disaster");
+      if (res.ok) {
+        const data = await res.json();
+        setActiveDisaster(data.activeAlert || null);
+      }
+    } catch (error) {
+      console.error("Error fetching disaster status:", error);
+    }
+  }, []);
+
+  const fetchBloodBanks = useCallback(async () => {
+    const res = await fetch("/api/bloodbanks");
+    if (res.ok) setBloodBanks(await res.json());
+  }, []);
+
+  const fetchUsers = useCallback(async () => {
+    const res = await fetch("/api/admin/users");
+    if (res.ok) setUsers(await res.json());
+  }, []);
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login");
@@ -133,7 +197,7 @@ export default function AdminDashboard() {
         fetchDisasterStatus();
       }
     }
-  }, [status, session, router]);
+  }, [status, session, router, fetchStats, fetchDisasterStatus]);
 
   useEffect(() => {
     if (status === "authenticated" && session?.user?.role === "admin") {
@@ -146,19 +210,9 @@ export default function AdminDashboard() {
       if (activeTab === "feedback") fetchFeedbacks();
       if (activeTab === "audit logs") fetchAuditLogs();
     }
-  }, [activeTab, status, session, dataRange]);
+  }, [activeTab, status, session, fetchBloodBanks, fetchUsers, fetchAppointments, fetchRequests, fetchCamps, fetchVolunteers, fetchFeedbacks, fetchAuditLogs]);
 
-  const fetchDisasterStatus = async () => {
-    try {
-      const res = await fetch("/api/disaster");
-      if (res.ok) {
-        const data = await res.json();
-        setActiveDisaster(data.activeAlert || null);
-      }
-    } catch (error) {
-      console.error("Error fetching disaster status:", error);
-    }
-  };
+
 
   const handleDisasterSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -186,8 +240,9 @@ export default function AdminDashboard() {
         });
 
         // Trigger Socket.io real-time broadcast via backend
+        let broadcastSent = false;
         try {
-          await fetch(`${process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:5000'}/api/notify`, {
+          const broadcast = await fetch("/api/notifications", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
@@ -197,11 +252,12 @@ export default function AdminDashboard() {
               role: "all"
             })
           });
+          broadcastSent = broadcast.ok;
         } catch (socketErr) {
           console.error("Socket notification failed, but data saved.", socketErr);
         }
 
-        alert("Disaster Mode Activated! Real-time broadcast sent to all users.");
+        alert(broadcastSent ? "Disaster Mode Activated! Live notification sent." : "Disaster Mode Activated. Live notification could not be sent; check notification service settings.");
       }
     } catch (error) {
       console.error("Error activating disaster mode:", error);
@@ -227,58 +283,11 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchStats = async () => {
-    try {
-      const res = await fetch("/api/admin/stats");
-      if (res.ok) setStats(await res.json());
-    } catch (error) {
-      console.error("Error fetching stats:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const fetchBloodBanks = async () => {
-    const res = await fetch("/api/bloodbanks");
-    if (res.ok) setBloodBanks(await res.json());
-  };
 
-  const getRangeQuery = () => (dataRange === '30d' ? 'days=30' : 'range=all');
 
-  const fetchAppointments = async () => {
-    const res = await fetch(`/api/appointments?${getRangeQuery()}`);
-    if (res.ok) setAppointments(await res.json());
-  };
 
-  const fetchUsers = async () => {
-    const res = await fetch("/api/admin/users");
-    if (res.ok) setUsers(await res.json());
-  };
 
-  const fetchRequests = async () => {
-    const res = await fetch(`/api/requests?${getRangeQuery()}`);
-    if (res.ok) setRequests(await res.json());
-  };
-
-  const fetchCamps = async () => {
-    const res = await fetch(`/api/camps?${getRangeQuery()}`);
-    if (res.ok) setCamps(await res.json());
-  };
-
-  const fetchVolunteers = async () => {
-    const res = await fetch(`/api/admin/volunteers?${getRangeQuery()}`);
-    if (res.ok) setVolunteers(await res.json());
-  };
-
-  const fetchFeedbacks = async () => {
-    const res = await fetch(`/api/feedback?all=true&${getRangeQuery()}`);
-    if (res.ok) setFeedbacks(await res.json());
-  };
-
-  const fetchAuditLogs = async () => {
-    const res = await fetch(`/api/admin/audit-logs?${getRangeQuery()}`);
-    if (res.ok) setAuditLogs(await res.json());
-  };
 
   const handleAddBank = async (e: React.FormEvent) => {
     e.preventDefault();

@@ -1,103 +1,73 @@
-# Jeevan — Blood Donation Platform
+# Jeevan - Blood Donation Platform
 
-This repository contains the code for "Jeevan", a community blood donation platform with a Next.js frontend and a Node.js backend. It supports donor scheduling, hospital management, donation tracking, badges, reminders, and admin workflows.
+Next.js 16, React 19 and MongoDB application for donors, recipients, hospitals and administrators. The optional Express service delivers Socket.IO notifications.
 
-**Repository layout**
+## Start locally
 
-- [frontend](frontend): Next.js 13+ application (React, App Router, API routes). This hosts the user-facing UI and many serverless API endpoints.
-- [backend](backend): Optional Express/Node API server used for legacy or separate deployments.
-- Other files: `package.json`, `tsconfig.json`, deployment config and docs.
+Use Node.js 22 LTS or newer. From this directory:
 
-**Key features**
-
-- Donor: Book appointments, view donation history, download certificates, health vitals tracking, digital donor ID.
-- Hospital/Admin: View and confirm appointments, manage blood banks and camps, view analytics.
-- Notifications: Donation reminders and emergency alerts.
-
-## Prerequisites
-
-- Node.js 18+ (recommended)
-- npm 8+ or yarn
-- A MongoDB instance (Atlas, local, or cloud provider)
-
-## Quickstart — Frontend (development)
-
-1. Install dependencies and run the Next.js app:
-
-```bash
-cd frontend
-npm install
+```powershell
+npm --prefix frontend install
+Copy-Item frontend/.env.example frontend/.env.local
+# Edit frontend/.env.local with your MongoDB, NextAuth and SMTP settings.
 npm run dev
 ```
 
-2. Open your browser at `http://localhost:3000`.
+Open http://localhost:3000. On Windows, use `npm.cmd` if PowerShell blocks `npm.ps1`.
 
-Notes:
-- The frontend uses NextAuth for authentication. During development you may need to set `NEXTAUTH_URL` and `NEXTAUTH_SECRET` in your environment.
+Required settings:
 
-## Quickstart — Backend (development)
+- `MONGODB_URI`: MongoDB Atlas or a MongoDB replica set. Completing a donation updates inventory and donor totals in a transaction; a standalone MongoDB server does not support this operation.
+- `NEXTAUTH_URL`: the application's base URL.
+- `NEXTAUTH_SECRET`: a strong random secret, not the example value.
+- `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`: used consistently for registration, password resets, contact messages and donation receipts. Missing mail credentials now produce an error instead of silently pretending an email was sent.
 
-The backend is optional; the Next.js app contains many server routes. If you run the `backend` service, do the following:
+See [frontend/.env.example](frontend/.env.example) for optional Google OAuth, Gemini, Razorpay and Discord settings. Existing `EMAIL_USER` and `EMAIL_PASS` are accepted as SMTP credential fallbacks. Never expose private credentials through `NEXT_PUBLIC_*` settings.
 
-```bash
-cd backend
-npm install
-npm run dev
+Public registration creates donor or recipient accounts. An existing administrator must assign hospital/admin roles and link hospital users to blood banks. For a fresh local database only, enable `ENABLE_DEV_SEED=true`, set `SEED_ADMIN_EMAIL` and a random `SEED_ADMIN_PASSWORD` of at least 12 characters, then visit `/api/seed` while running the development server. Disable seeding afterwards. The seed endpoint is unavailable in production.
+
+## Checks
+
+For the full test suite, first install the optional backend test dependencies with `npm --prefix backend install`. Run these from the repository root:
+
+```powershell
+npm run check
+npm run build
 ```
 
-Backend runs by default on `http://localhost:5000` (check `backend/package.json` scripts).
+`check` runs ESLint, TypeScript and isolated route regression tests. Tests mock external services and do not send email, charge payments or change MongoDB data.
 
-## Environment variables
+For production locally: `npm run build`, then `npm start`. For Vercel, select `frontend` as the project root directory.
 
-Create a `.env` file in both `frontend` and `backend` (if you use it). Typical variables include:
+## Payments
 
-- `MONGODB_URI` — MongoDB connection string
-- `NEXTAUTH_SECRET` — NextAuth secret
-- `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` — for Google OAuth
-- `NEXTAUTH_URL` — e.g. `http://localhost:3000`
-- `SENDGRID_API_KEY` or SMTP details — for transactional emails
+Set Razorpay test credentials before integration testing. Order creation stores the expected amount and receipt email; completion verifies the signature, order, amount, currency and captured status on the server. Missing keys disable checkout. Test mode uses Razorpay's own test checkout rather than simulated successful donations.
 
-Adjust services according to your provider. Do NOT commit secrets to git.
+## Optional notification backend
 
-## Database migrations & models
-
-- The project uses Mongoose models stored under `frontend/src/models` (e.g., `User.ts`, `Appointment.ts`). There is no automated migration system included — ensure model changes are applied carefully in staging/production.
-
-## Testing & Linting
-
-Run the frontend linter and tests (if present):
-
-```bash
-cd frontend
-npm run lint
-npm run test  # if tests are configured
+```powershell
+npm --prefix backend install
+Copy-Item backend/.env.example backend/.env
+npm run dev:backend
 ```
 
-## Deployment
+Set the same random `NOTIFICATION_API_TOKEN` in the frontend and backend environments. Set `SOCKET_SERVER_URL=http://localhost:5000` for server broadcasts and `NEXT_PUBLIC_SOCKET_URL=http://localhost:5000` for browser subscriptions. Set backend `FRONTEND_URL` to permitted frontend origins (comma separated). Broadcasts go through an admin-only Next.js endpoint; the private token is never sent to browsers. MongoDB is optional for this service.
 
-- Frontend: Deploy the `frontend` directory to Vercel for the easiest experience. Ensure environment variables are configured in the Vercel dashboard.
-- Backend: Deploy `backend` to your chosen host (Render, Railway, Heroku). Point the frontend API calls to the deployed backend if you use it.
+## Layout
 
-## Contributing
+- `frontend/src/app`: pages and Next.js API routes.
+- `frontend/src/lib`: shared authentication, validation, mail, database and appointment workflow.
+- `frontend/src/models`: Mongoose schemas.
+- `frontend/tests`: regression tests.
+- `backend`: optional Socket.IO service.
 
-1. Fork the repository and create a feature branch: `git checkout -b feat/my-change`
-2. Implement changes and run lint/tests locally.
-3. Open a PR describing the change and link any relevant issue.
+See [PROJECT_REVIEW.md](PROJECT_REVIEW.md) for repairs, verification limits and suggested additions. Existing Discord setup instructions are in [frontend/DISCORD_APPOINTMENT_WORKFLOW.md](frontend/DISCORD_APPOINTMENT_WORKFLOW.md).
 
-## Useful file locations
+## Security automation
 
-- Main donor dashboard: `frontend/src/app/dashboard/donor/page.tsx`
-- App API routes: `frontend/src/app/api`
-- Mongoose models: `frontend/src/models`
-
-## Contact & Support
-
-If you need help, open an issue or contact the maintainers listed in the repo. For urgent production incidents, use the project's incident escalation process (if configured).
-
----
-
-If you'd like, I can also:
-
-- Add a detailed `env.example` with recommended variables.
-- Add a short developer setup script to bootstrap the environment.
-- Run the linter and commit the README update for you.
+The `staging` and `main` branches run dependency audits, a full-history secret
+scan, lint/type checks, regression tests, a production build, and CodeQL analysis
+on pushes and pull requests. Weekly scans and Dependabot updates against `staging`
+activate once these configuration files reach the default branch (`main`).
+See [SECURITY.md](SECURITY.md) for the checks,
+private reporting guidance, and branch protection setup.

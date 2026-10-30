@@ -1,15 +1,5 @@
-const CACHE_NAME = 'jeevan-v1';
-const urlsToCache = [
-  '/',
-  '/donate',
-  '/request',
-  '/login',
-  '/register',
-  '/about',
-  '/contact',
-  '/faq',
-  '/leaderboard',
-];
+const CACHE_NAME = 'jeevan-v2';
+const urlsToCache = ['/offline.html'];
 
 // Install event
 self.addEventListener('install', (event) => {
@@ -32,7 +22,7 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
+          if (cacheName.startsWith('jeevan-') && cacheName !== CACHE_NAME) {
             console.log('Deleting old cache:', cacheName);
             return caches.delete(cacheName);
           }
@@ -43,42 +33,27 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - Network first, fallback to cache
+// Cache only immutable static files. Never persist account pages, API responses or RSC payloads.
 self.addEventListener('fetch', (event) => {
-  // Skip non-GET requests
-  if (event.request.method !== 'GET') return;
-  
-  // Skip API requests and auth
-  if (event.request.url.includes('/api/') || event.request.url.includes('/auth/')) {
+  const url = new URL(event.request.url);
+  if (event.request.method !== 'GET' || url.origin !== self.location.origin) return;
+  if (event.request.mode === 'navigate') {
+    event.respondWith(fetch(event.request).catch(async () =>
+      (await caches.match('/offline.html')) || Response.error()
+    ));
     return;
   }
-
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        // Clone the response
-        const responseClone = response.clone();
-        
-        caches.open(CACHE_NAME)
-          .then((cache) => {
-            cache.put(event.request, responseClone);
-          });
-        
-        return response;
-      })
-      .catch(() => {
-        return caches.match(event.request)
-          .then((response) => {
-            if (response) {
-              return response;
-            }
-            // Return offline page for navigation requests
-            if (event.request.mode === 'navigate') {
-              return caches.match('/');
-            }
-          });
-      })
-  );
+  if (!url.pathname.startsWith('/_next/static/') && !url.pathname.startsWith('/icons/')) return;
+  event.respondWith((async () => {
+    const cached = await caches.match(event.request);
+    if (cached) return cached;
+    const response = await fetch(event.request);
+    if (response.ok && response.type === 'basic') {
+      const cache = await caches.open(CACHE_NAME);
+      await cache.put(event.request, response.clone());
+    }
+    return response;
+  })());
 });
 
 // Push notification event
@@ -111,6 +86,6 @@ self.addEventListener('notificationclick', (event) => {
   if (event.action === 'close') return;
 
   event.waitUntil(
-    clients.openWindow(event.notification.data.url || '/')
+    clients.openWindow(new URL(event.notification.data.url || '/', self.location.origin).origin === self.location.origin ? event.notification.data.url || '/' : '/')
   );
 });

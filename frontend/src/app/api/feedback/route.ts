@@ -3,7 +3,7 @@ import connectDB from "@/lib/db";
 import Feedback from "@/models/Feedback";
 import Appointment from "@/models/Appointment";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import { sendFeedbackNotificationToAdmin } from "@/lib/email";
 
 // Get feedback for a user's appointments

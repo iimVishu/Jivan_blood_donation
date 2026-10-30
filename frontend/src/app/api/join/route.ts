@@ -1,73 +1,33 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { sendEmail, escapeHtml } from "@/lib/email";
+import { errorResponse } from "@/lib/api-validation";
 import dbConnect from "@/lib/db";
 import Volunteer from "@/models/Volunteer";
 
 export async function POST(req: Request) {
   try {
+    const { name, email, phone, address, reason } = await req.json();
+    if (![name, email, phone, address, reason].every(value => typeof value === 'string' && value.trim())) {
+      return NextResponse.json({ message: 'All application fields are required' }, { status: 400 });
+    }
     await dbConnect();
-    const body = await req.json();
-    const { name, email, phone, address, reason } = body;
-
-    // Log the application details (for debugging/backup)
-    console.log("New Volunteer Application:", body);
-
-    // Save to MongoDB
+    await Volunteer.create({ name, email, phone, address, reason });
+    let emailSent = false;
     try {
-      await Volunteer.create({
-        name,
-        email,
-        phone,
-        address,
-        reason
-      });
-    } catch (dbError) {
-      console.error("Error saving to database:", dbError);
-      return NextResponse.json({ message: "Failed to save application" }, { status: 500 });
+      const adminEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER;
+      if (adminEmail) {
+        await sendEmail(adminEmail, `New Volunteer Application: ${name}`, `
+          <h2>Volunteer Application</h2><p>${escapeHtml(name)} (${escapeHtml(email)})</p>
+          <p>${escapeHtml(phone)}</p><p>${escapeHtml(address)}</p><p>${escapeHtml(reason)}</p>
+        `);
+        emailSent = true;
+      }
+    } catch (error) {
+      console.error('Volunteer application saved; admin email failed:', error);
     }
-
-    // Check if email credentials are configured
-    if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS) {
-      console.warn("Email credentials not found in .env.local. Simulating email send.");
-      return NextResponse.json({ message: "Application received (Simulation Mode)" });
-    }
-
-    // Configure email transporter
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    // Email content
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: "vishal14142004@gmail.com", // The receiver email specified by the user
-      subject: `New Volunteer Application: ${name}`,
-      html: `
-        <h2>New Volunteer Application</h2>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Phone:</strong> ${phone}</p>
-        <p><strong>Address:</strong> ${address}</p>
-        <p><strong>Reason for Joining:</strong></p>
-        <p>${reason}</p>
-      `,
-    };
-
-    // Send email
-    await transporter.sendMail(mailOptions);
-
-    return NextResponse.json({ message: "Application sent successfully" });
+    return NextResponse.json({ message: 'Application received', emailSent }, { status: 201 });
   } catch (error) {
-    console.error("Error sending email:", error);
-    // Return success even if email fails, so the user isn't blocked.
-    // In a real app, you might want to save to DB as backup.
-    return NextResponse.json(
-      { message: "Application received (Email failed to send - check server logs)" },
-      { status: 200 }
-    );
+    const { message, status } = errorResponse(error);
+    return NextResponse.json({ message }, { status });
   }
 }

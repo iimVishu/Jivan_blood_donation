@@ -8,13 +8,13 @@ export async function POST(req: Request) {
   try {
     const { email } = await req.json();
 
-    if (!email) {
+    if (typeof email !== "string" || !email.trim()) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 });
     }
 
     await connectDB();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: email.trim().toLowerCase() });
 
     if (!user) {
       // Return 200 even if user not found to prevent email enumeration
@@ -25,7 +25,7 @@ export async function POST(req: Request) {
     const resetToken = crypto.randomBytes(32).toString('hex');
     const resetTokenExpiry = Date.now() + 3600000; // 1 hour
 
-    user.resetPasswordToken = resetToken;
+    user.resetPasswordToken = crypto.createHash('sha256').update(resetToken).digest('hex');
     user.resetPasswordExpires = resetTokenExpiry;
     await user.save();
 

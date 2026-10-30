@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import nodemailer from "nodemailer";
+import { sendEmail, escapeHtml } from "@/lib/email";
 
 export async function POST(req: Request) {
   try {
@@ -12,30 +12,13 @@ export async function POST(req: Request) {
       );
     }
 
-    const transporter = nodemailer.createTransport({
-      service: "gmail",
-      auth: {
-        user: process.env.EMAIL_USER,
-        pass: process.env.EMAIL_PASS,
-      },
-    });
-
-    const mailOptions = {
-      from: process.env.EMAIL_USER,
-      to: process.env.EMAIL_USER, // Send to yourself or a dedicated support email
-      replyTo: email,
-      subject: `New Contact Form Submission: ${subject}`,
-      html: `
-        <h3>New Contact Message</h3>
-        <p><strong>Name:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
-        <p><strong>Subject:</strong> ${subject}</p>
-        <p><strong>Message:</strong></p>
-        <p>${message}</p>
-      `,
-    };
-
-    await transporter.sendMail(mailOptions);
+    const supportEmail = process.env.ADMIN_EMAIL || process.env.SMTP_USER || process.env.EMAIL_USER;
+    if (!supportEmail) return NextResponse.json({ message: 'Contact email is not configured' }, { status: 503 });
+    await sendEmail(supportEmail, `New Contact Form Submission: ${subject}`, `
+      <h3>New Contact Message</h3>
+      <p>Name: ${escapeHtml(name)}</p><p>Email: ${escapeHtml(email)}</p>
+      <p>Subject: ${escapeHtml(subject)}</p><p>${escapeHtml(message)}</p>
+    `);
 
     return NextResponse.json(
       { message: "Message sent successfully" },

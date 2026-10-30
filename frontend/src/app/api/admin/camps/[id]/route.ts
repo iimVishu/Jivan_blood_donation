@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import Camp from "@/models/Camp";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 import AuditLog from "@/models/AuditLog";
 
 export async function PUT(req: Request, { params }: { params: Promise<{ id: string }> }) {

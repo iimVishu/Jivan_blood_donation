@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
+import { SAFE_USER_FIELDS, pickFields, errorResponse } from "@/lib/api-validation";
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -14,7 +15,7 @@ export async function GET(req: Request) {
     }
 
     await dbConnect();
-    const user = await User.findById(session.user.id).select("-password");
+    const user = await User.findById(session.user.id).select(SAFE_USER_FIELDS);
     
     if (!user) {
       return NextResponse.json({ message: "User not found" }, { status: 404 });
@@ -36,19 +37,19 @@ export async function PUT(req: Request) {
     await dbConnect();
     const body = await req.json();
 
-    // Prevent updating sensitive fields like password or role directly here
-    delete body.password;
-    delete body.role;
-    delete body.email; 
+    const update = pickFields(body, ['name', 'phone', 'bloodGroup', 'address', 'location', 'isAvailable', 'isAnonymous', 'healthConditions']);
 
     const updatedUser = await User.findByIdAndUpdate(
       session.user.id,
-      { ...body },
-      { new: true }
-    ).select("-password");
+      { $set: update },
+      { new: true, runValidators: true }
+    ).select(SAFE_USER_FIELDS);
+
+    if (!updatedUser) return NextResponse.json({ message: "User not found" }, { status: 404 });
 
     return NextResponse.json(updatedUser);
   } catch (error) {
-    return NextResponse.json({ message: "Internal Server Error" }, { status: 500 });
+    const { message, status } = errorResponse(error);
+    return NextResponse.json({ message }, { status });
   }
 }
