@@ -8,13 +8,14 @@ const { createHmac, generateKeyPairSync, sign } = require('node:crypto');
 const ts = require('typescript');
 
 // Exercise real route handlers with isolated service mocks; no emails, payments or database writes.
-function load(entry, overrides = {}, env = {}) {
+function load(entry, overrides = {}, env = {}, globals = {}) {
   const cache = new Map();
   const mocks = {
     'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) } },
     'next-auth': { getServerSession: async () => null },
     '@/lib/auth': { authOptions: {} },
     '@/lib/db': async () => {},
+    '@/models/DiscordInteractionReceipt': { create: async () => {} },
     ...overrides,
   };
   function read(file) {
@@ -34,6 +35,7 @@ function load(entry, overrides = {}, env = {}) {
       module: loadedModule, exports: loadedModule.exports, require: requireMock, Buffer, Date, URL, Request, Response,
       SyntaxError, AbortSignal, process: { env: { ...env } },
       console: { log() {}, info() {}, warn() {}, error() {} },
+      ...globals,
     }, { filename: file });
     return loadedModule.exports;
   }
@@ -193,7 +195,7 @@ test('Discord reschedule button opens its modal after signature and admin checks
   const route = load('app/api/discord/interactions/route.ts', { '@/lib/appointment-workflow': {} }, {
     DISCORD_PUBLIC_KEY: hex, DISCORD_ADMIN_USER_IDS: '123', DISCORD_ADMIN_MONGODB_USER_ID: donorId,
   });
-  const body = JSON.stringify({ type: 3, member: { user: { id: '123' } }, data: { custom_id: `appointment:${id}:reschedule` } });
+  const body = JSON.stringify({ id: '111111111111111111', application_id: '456', type: 3, member: { user: { id: '123' } }, data: { custom_id: `appointment:${id}:reschedule` } });
   const timestamp = String(Math.floor(Date.now() / 1000));
   const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
   const response = await route.POST(new Request('http://localhost/api/discord', { method: 'POST', body, headers: { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp } }));
@@ -271,10 +273,163 @@ test('Discord acknowledges slow appointment changes before running background wo
     DISCORD_PUBLIC_KEY: publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('hex'),
     DISCORD_ADMIN_USER_IDS: '123', DISCORD_ADMIN_MONGODB_USER_ID: donorId,
   });
-  const body = JSON.stringify({ type: 3, application_id: '456', token: 'test-token', member: { user: { id: '123' } }, data: { custom_id: `appointment:${id}:confirm` } });
+  const body = JSON.stringify({ id: '111111111111111111', type: 3, application_id: '456', token: 'test-token', member: { user: { id: '123' } }, data: { custom_id: `appointment:${id}:confirm` } });
   const timestamp = String(Math.floor(Date.now() / 1000));
   const signature = sign(null, Buffer.from(timestamp + body), privateKey).toString('hex');
   const response = await route.POST(new Request('http://localhost/api/discord', { method: 'POST', body, headers: { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp } }));
   assert.equal((await response.json()).type, 5);
   assert.equal(callbacks.length, 1);
+});
+
+function discordHarness(overrides = {}) {
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519');
+  const callbacks = [];
+  const receipts = new Set();
+  const updates = [];
+  const replies = [];
+  const env = {
+    DISCORD_PUBLIC_KEY: publicKey.export({ type: 'spki', format: 'der' }).subarray(-32).toString('hex'),
+    DISCORD_ADMIN_USER_IDS: '123', DISCORD_ADMIN_MONGODB_USER_ID: donorId,
+  };
+  const mocks = {
+    'next/server': { NextResponse: { json: (body, init) => Response.json(body, init) }, after: (fn) => callbacks.push(fn) },
+    '@/models/DiscordInteractionReceipt': { create: async (documents, options) => {
+      assert.equal(options.writeConcern.w, 'majority');
+      const receipt = documents[0];
+      assert.ok(receipt.expiresAt.getTime() > Date.now() + 5 * 60 * 1000);
+      // Model a database's atomic unique _id insertion, shared by separate route instances.
+      await Promise.resolve();
+      if (receipts.has(receipt._id)) throw { code: 11000 };
+      receipts.add(receipt._id);
+    } },
+    '@/lib/appointment-workflow': { updateAppointmentWorkflow: async (update) => { updates.push(update); } },
+    ...overrides,
+  };
+  const route = () => load('app/api/discord/interactions/route.ts', mocks, env, {
+    fetch: async (_url, options) => { replies.push(JSON.parse(options.body)); return Response.json({}); },
+  });
+  function signedRequest(body, timestamp = String(Math.floor(Date.now() / 1000))) {
+    const raw = JSON.stringify(body);
+    const signature = sign(null, Buffer.from(timestamp + raw), privateKey).toString('hex');
+    return new Request('http://localhost/api/discord', { method: 'POST', body: raw, headers: { 'x-signature-ed25519': signature, 'x-signature-timestamp': timestamp } });
+  }
+  function reschedule(interactionId, date) {
+    return {
+      id: interactionId, type: 5, application_id: '456', token: 'test-token', member: { user: { id: '123' } },
+      data: { custom_id: `appointment_reschedule:${id}`, components: [{ components: [{ value: date }] }, { components: [{ value: '09:30' }] }] },
+    };
+  }
+  return { route, signedRequest, reschedule, callbacks, receipts, updates, replies };
+}
+
+test('Discord timestamp policy rejects malformed, stale and excessively future timestamps', () => {
+  const { isFreshDiscordTimestamp } = load('lib/discord-interactions.ts');
+  const now = 1800000000000;
+  for (const timestamp of [null, '', 'NaN', '1800000000.5', '-1', '1e9', '99999999999999999']) {
+    assert.equal(isFreshDiscordTimestamp(timestamp, now), false, String(timestamp));
+  }
+  assert.equal(isFreshDiscordTimestamp(String(now / 1000 - 300), now), true);
+  assert.equal(isFreshDiscordTimestamp(String(now / 1000 - 301), now), false);
+  assert.equal(isFreshDiscordTimestamp(String(now / 1000 + 30), now), true);
+  assert.equal(isFreshDiscordTimestamp(String(now / 1000 + 31), now), false);
+});
+
+test('an interaction that expires while connecting is never claimed', async () => {
+  let now = Date.now();
+  let inserted = false;
+  class TestClock extends Date { static now() { return now; } }
+  const guard = load('lib/discord-interactions.ts', {
+    '@/lib/db': async () => { now += 301000; },
+    '@/models/DiscordInteractionReceipt': { create: async () => { inserted = true; } },
+  }, {}, { Date: TestClock });
+  const timestamp = String(Math.floor(now / 1000));
+  await assert.rejects(guard.consumeDiscordInteraction('456', '111111111111111111', timestamp), /expired/);
+  assert.equal(inserted, false);
+});
+
+test('receipt identity uses MongoDB primary-key uniqueness and TTL is cleanup only', () => {
+  const model = load('models/DiscordInteractionReceipt.ts').default;
+  assert.equal(model.schema.path('_id').instance, 'String');
+  const ttl = model.schema.indexes().find(([fields]) => fields.expiresAt === 1);
+  assert.equal(ttl[1].expireAfterSeconds, 0);
+});
+
+test('correctly signed old and future Discord requests are rejected before scheduling work', async () => {
+  const harness = discordHarness();
+  const body = harness.reschedule('111111111111111111', '2026-11-02');
+  for (const offset of [-600, 600]) {
+    const response = await harness.route().POST(harness.signedRequest(body, String(Math.floor(Date.now() / 1000) + offset)));
+    assert.equal(response.status, 401);
+  }
+  assert.equal(harness.callbacks.length, 0);
+  assert.equal(harness.receipts.size, 0);
+  assert.equal(harness.updates.length, 0);
+});
+
+test('Discord ping still works without database access', async () => {
+  const harness = discordHarness({ '@/lib/db': async () => { throw new Error('Database unavailable'); } });
+  const response = await harness.route().POST(harness.signedRequest({ type: 1 }));
+  assert.deepEqual(await response.json(), { type: 1 });
+  assert.equal(harness.callbacks.length, 0);
+});
+
+test('Discord mutations require an interaction ID before being acknowledged', async () => {
+  const harness = discordHarness();
+  const body = harness.reschedule('111111111111111111', '2026-11-02');
+  delete body.id;
+  assert.equal((await harness.route().POST(harness.signedRequest(body))).status, 400);
+  body.id = 'not-a-snowflake';
+  assert.equal((await harness.route().POST(harness.signedRequest(body))).status, 400);
+  assert.equal(harness.callbacks.length, 0);
+});
+
+test('replaying an earlier reschedule cannot overwrite a newer appointment change', async () => {
+  const harness = discordHarness();
+  const workerA = harness.route();
+  const workerB = harness.route();
+  const first = harness.reschedule('111111111111111111', '2026-11-02');
+  const second = harness.reschedule('222222222222222222', '2026-11-03');
+  const firstTimestamp = String(Math.floor(Date.now() / 1000));
+  for (const [worker, body, timestamp] of [[workerA, first, firstTimestamp], [workerB, second, undefined], [workerB, first, firstTimestamp]]) {
+    const response = await worker.POST(harness.signedRequest(body, timestamp));
+    assert.equal((await response.json()).type, 5);
+    await harness.callbacks.shift()();
+  }
+  assert.equal(harness.updates.length, 2);
+  assert.equal(harness.updates.at(-1).date.getDate(), 3);
+  assert.equal(harness.receipts.size, 2);
+  assert.equal(harness.replies.length, 2, 'replay must not overwrite the original Discord response');
+});
+
+test('concurrent duplicate Discord deliveries across workers apply one appointment update', async () => {
+  const harness = discordHarness();
+  const body = harness.reschedule('111111111111111111', '2026-11-02');
+  const workers = Array.from({ length: 8 }, () => harness.route());
+  await Promise.all(workers.map(async (worker) => {
+    const response = await worker.POST(harness.signedRequest(body));
+    assert.equal((await response.json()).type, 5);
+  }));
+  await Promise.all(harness.callbacks.map((callback) => callback()));
+  assert.equal(harness.updates.length, 1);
+  assert.equal(harness.receipts.size, 1);
+});
+
+test('Discord storage failures fail closed without changing an appointment', async () => {
+  const harness = discordHarness({ '@/models/DiscordInteractionReceipt': { create: async () => { throw new Error('Storage unavailable'); } } });
+  await harness.route().POST(harness.signedRequest(harness.reschedule('111111111111111111', '2026-11-02')));
+  await harness.callbacks.shift()();
+  assert.equal(harness.updates.length, 0);
+  assert.match(harness.replies[0].content, /Could not update/);
+});
+
+test('a failed Discord operation stays consumed rather than replaying partial side effects', async () => {
+  let attempted = 0;
+  const harness = discordHarness({ '@/lib/appointment-workflow': { updateAppointmentWorkflow: async () => { attempted++; throw new Error('Operation failed'); } } });
+  const body = harness.reschedule('111111111111111111', '2026-11-02');
+  for (let delivery = 0; delivery < 2; delivery++) {
+    await harness.route().POST(harness.signedRequest(body));
+    await harness.callbacks.shift()();
+  }
+  assert.equal(attempted, 1);
+  assert.equal(harness.receipts.size, 1);
 });

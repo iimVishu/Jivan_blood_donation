@@ -2,11 +2,13 @@ import { createPublicKey, verify } from "node:crypto";
 import { NextResponse, after } from "next/server";
 import { updateAppointmentWorkflow } from "@/lib/appointment-workflow";
 import { objectId } from "@/lib/api-validation";
+import { consumeDiscordInteraction, isFreshDiscordTimestamp } from '@/lib/discord-interactions';
 
 export const runtime = "nodejs";
 export const maxDuration = 120;
 
 type DiscordInteraction = {
+  id?: string;
   type: number;
   application_id?: string;
   token?: string;
@@ -20,7 +22,7 @@ type DiscordInteraction = {
 
 function verifySignature(rawBody: string, signature: string | null, timestamp: string | null) {
   const publicKey = process.env.DISCORD_PUBLIC_KEY;
-  if (!publicKey || !signature || !timestamp || !/^[a-f0-9]{64}$/i.test(publicKey)) return false;
+  if (!publicKey || !signature || !/^[a-f0-9]{64}$/i.test(publicKey) || !/^[a-f0-9]{128}$/i.test(signature) || !isFreshDiscordTimestamp(timestamp)) return false;
 
   try {
     const key = createPublicKey({
@@ -67,7 +69,7 @@ function response(content: string, ephemeral = true) {
   });
 }
 
-function deferredResponse(interaction: DiscordInteraction, operation: () => Promise<string>) {
+function deferredResponse(interaction: DiscordInteraction, timestamp: string, operation: () => Promise<string>) {
   if (!interaction.application_id || !/^\d+$/.test(interaction.application_id) || !interaction.token) {
     return response('Missing interaction response details.');
   }
@@ -76,6 +78,10 @@ function deferredResponse(interaction: DiscordInteraction, operation: () => Prom
   after(async () => {
     let content: string;
     try {
+      if (!await consumeDiscordInteraction(interaction.application_id!, interaction.id!, timestamp)) {
+        // Preserve the original operation's response when Discord retries a delivery.
+        return;
+      }
       content = await operation();
     } catch (error) {
       console.error('Discord appointment operation failed:', error);
@@ -126,7 +132,8 @@ function getModalValues(interaction: DiscordInteraction) {
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  if (!verifySignature(rawBody, req.headers.get("x-signature-ed25519"), req.headers.get("x-signature-timestamp"))) {
+  const timestamp = req.headers.get('x-signature-timestamp');
+  if (!verifySignature(rawBody, req.headers.get("x-signature-ed25519"), timestamp)) {
     return NextResponse.json({ message: "Invalid request signature" }, { status: 401 });
   }
 
@@ -137,9 +144,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ message: "Invalid JSON" }, { status: 400 });
   }
 
+  if (!interaction || typeof interaction !== 'object') {
+    return NextResponse.json({ message: 'Invalid interaction' }, { status: 400 });
+  }
   if (interaction.type === 1) return NextResponse.json({ type: 1 });
   if (![3, 5].includes(interaction.type) || !isAuthorizedAdmin(interaction)) {
     return response("You are not authorized to manage appointments from Discord.");
+  }
+  if (typeof interaction.id !== 'string' || !/^\d{1,20}$/.test(interaction.id) || typeof interaction.application_id !== 'string' || !/^\d{1,20}$/.test(interaction.application_id)) {
+    return NextResponse.json({ message: 'Invalid interaction identity' }, { status: 400 });
   }
 
   const customId = interaction.data?.custom_id || "";
@@ -164,7 +177,7 @@ export async function POST(req: Request) {
       return response("Use a valid date in YYYY-MM-DD format.");
     }
 
-    return deferredResponse(interaction, async () => {
+    return deferredResponse(interaction, timestamp!, async () => {
       await updateAppointmentWorkflow({
         id: appointmentId,
         date: parsedDate,
@@ -195,7 +208,7 @@ export async function POST(req: Request) {
 
   if (!status && !trackingStatus) return response("Unsupported appointment action.");
 
-  return deferredResponse(interaction, async () => {
+  return deferredResponse(interaction, timestamp!, async () => {
     await updateAppointmentWorkflow({
       id: appointmentId,
       status,

@@ -11,7 +11,7 @@
 - Protected SOS resolution, SMTP diagnostics, local seeding and notification broadcasts.
 - Unified SMTP settings across signup, contact and volunteer forms; failures no longer silently report a sent email. Volunteer applications remain saved if only their email notification fails.
 - Implemented server-side Razorpay verification and stored expected receipt data. Fake successful payments are disabled; repeated successful callbacks do not normally send duplicate receipts.
-- Fixed Discord reschedule modal handling, malformed IDs, bot-only configuration and webhook fallback errors.
+- Fixed Discord reschedule modal handling, malformed IDs, bot-only configuration and webhook fallback errors. Added signed-timestamp freshness checks and persistent atomic interaction receipts to prevent stale and concurrent replays.
 - Prevented chatbot bookings from bypassing appointment validation and permission checks.
 - Stopped private page/RSC caching, added a static offline page, the missing grid asset and PWA icons, fixed service worker registration timing, and enabled browser zoom.
 - Corrected blood-group field mismatches, prevented self-approval through public camp creation, removed automatic demo seeding and replaced broken footer links and placeholder contact numbers.
@@ -31,7 +31,7 @@ These priorities are based on this repository's existing features and implementa
 ## Verification
 
 - ESLint is run with zero warnings allowed; frontend and repository TypeScript configurations are checked.
-- 18 frontend regression tests and one live backend Socket.IO integration test pass.
+- 28 frontend regression tests and one live backend Socket.IO integration test pass, including stale signed requests, cross-worker duplicate deliveries and replayed reschedules.
 - Production build succeeds with Next.js 16.4.3 and React 19.3.1.
 - npm audit reports zero known vulnerabilities for the root, frontend and backend dependency trees after updates. NextAuth uses explicit Nodemailer and UUID overrides; Google/Credentials authentication and shared SMTP are the configured code paths.
 - Browser smoke tests cover nine public pages, mobile registration, runtime errors and missing local assets. Database responses are isolated with fixtures; the service worker cache policy has its own regression test.

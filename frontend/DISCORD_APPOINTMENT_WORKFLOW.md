@@ -37,3 +37,27 @@ At least one of `DISCORD_ADMIN_USER_IDS` or `DISCORD_ADMIN_ROLE_IDS` must match 
 The interactions endpoint must be publicly reachable over HTTPS. For local development, use an HTTPS tunnel such as Cloudflare Tunnel or ngrok and set the resulting URL as the Discord endpoint. `localhost:3000` cannot receive Discord callbacks directly.
 
 The endpoint verifies every request with Discord's Ed25519 signature and rejects unauthorized users. Do not expose the webhook URL or application secrets in source control. Rotate the webhook if it has been shared publicly.
+
+## Replay protection
+
+Signed requests are accepted only within five minutes of their timestamp, with
+up to 30 seconds of future clock skew. Keep application server clocks synchronized.
+Discord's endpoint verification PING remains independent of MongoDB.
+
+Before changing an appointment, the deferred handler inserts a receipt keyed by
+`application_id:interaction_id` into `DiscordInteractionReceipt`, with majority
+write acknowledgement. MongoDB's built-in unique `_id` index makes that claim
+atomic across workers and server restarts. A duplicate delivery does not apply
+another update or overwrite the original Discord response.
+
+Receipt storage failures stop processing. Receipts remain consumed when an
+operation fails, so replaying a partially completed operation cannot repeat its
+side effects. Use a new Discord action or the dashboard to retry after checking
+the appointment's state. This provides at-most-once execution, not a durable job
+queue or guaranteed completion after a process crash.
+
+Receipts contain only the two IDs and an expiry time; tokens and request bodies
+are not stored. A TTL index cleans them up after 24 hours. If automatic index
+creation is disabled, create `{ expiresAt: 1 }` with `expireAfterSeconds: 0` on
+`discordinteractionreceipts` to enable cleanup. Replay safety does not depend on
+that TTL index: `_id` uniqueness is built in, and expired signatures are rejected.
