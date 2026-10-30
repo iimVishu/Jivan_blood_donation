@@ -23,7 +23,7 @@
     "jspdf": "^4.2.1",
     "leaflet": "^1.9.4",
     "lucide-react": "^0.554.0",
-    "mongoose": "^8.0.0",
+    "mongoose": "^9.11.4",
     "next": "^16.0.10",
     "next-auth": "^4.24.15",
     "nodemailer": "^10.3.1",
