@@ -67,6 +67,7 @@ See [PROJECT_REVIEW.md](PROJECT_REVIEW.md) for repairs, verification limits and 
 
 The `staging` and `main` branches run dependency audits, a full-history secret
 scan, lint/type checks, regression tests, a production build, and CodeQL analysis
-on pushes and pull requests. Scheduled scans also run weekly. Dependabot opens
-dependency updates against `staging`. See [SECURITY.md](SECURITY.md) for the checks,
+on pushes and pull requests. Weekly scans and Dependabot updates against `staging`
+activate once these configuration files reach the default branch (`main`).
+See [SECURITY.md](SECURITY.md) for the checks,
 private reporting guidance, and branch protection setup.

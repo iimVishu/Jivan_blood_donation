@@ -34,8 +34,11 @@ and GitHub Actions with the extended security queries. Findings appear in
 GitHub's code scanning alerts. CodeQL findings require review; a successful
 analysis run does not mean that no findings were produced.
 
-Actions are pinned to commit hashes. Dependabot proposes weekly npm and action
-updates against `staging`. Workflows use read-only repository access by default;
+Actions are pinned to commit hashes. Dependabot is configured to propose weekly
+npm and action updates against `staging`. GitHub activates schedules and
+Dependabot configuration from its default branch, so merge these files into
+`main` to activate those features. Push and pull-request checks already run on
+`staging`. Workflows use read-only repository access by default;
 only the CodeQL job receives permission to upload security findings. CI must not
 receive production MongoDB, SMTP, payment, or Discord credentials.
 
